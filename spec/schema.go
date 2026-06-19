@@ -14,9 +14,15 @@ func BuildSchema(pkgName, version string, result DiscoveryResult) (string, error
 		resources[res.Token] = resourceSpec(res)
 	}
 
+	language, err := packageLanguage(pkgName)
+	if err != nil {
+		return "", fmt.Errorf("marshaling package language metadata: %w", err)
+	}
+
 	pkg := pschema.PackageSpec{
 		Name:      pkgName,
 		Version:   version,
+		Language:  language,
 		Resources: resources,
 		Types:     result.Types,
 		Config:    providerConfigSpec(result.AuthSchemes),
@@ -28,6 +34,38 @@ func BuildSchema(pkgName, version string, result DiscoveryResult) (string, error
 		return "", fmt.Errorf("marshaling schema: %w", err)
 	}
 	return string(data), nil
+}
+
+func packageLanguage(pkgName string) (map[string]pschema.RawMessage, error) {
+	language := map[string]any{
+		"csharp": map[string]any{
+			"respectSchemaVersion": true,
+		},
+		"go": map[string]any{
+			"generateResourceContainerTypes": true,
+			"importBasePath":                 fmt.Sprintf("local-package/sdk/go/%s", pkgName),
+			"respectSchemaVersion":           true,
+		},
+		"nodejs": map[string]any{
+			"respectSchemaVersion": true,
+		},
+		"python": map[string]any{
+			"pyproject": map[string]any{
+				"enabled": true,
+			},
+			"respectSchemaVersion": true,
+		},
+	}
+
+	out := make(map[string]pschema.RawMessage, len(language))
+	for name, info := range language {
+		data, err := json.Marshal(info)
+		if err != nil {
+			return nil, err
+		}
+		out[name] = pschema.RawMessage(data)
+	}
+	return out, nil
 }
 
 func resourceSpec(res ResourceDef) pschema.ResourceSpec {
