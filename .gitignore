@@ -1,0 +1,13 @@
+# Binaries
+pulumi-resource-*
+
+# Go build cache and test artifacts
+*.test
+*.out
+coverage.txt
+
+# macOS
+.DS_Store
+
+# Generated SDKs
+examples/**/sdk

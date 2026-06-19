@@ -1,0 +1,65 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: make test
+
+  discover-examples:
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      examples: ${{ steps.list.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: List examples
+        id: list
+        run: |
+          examples=$(ls -d examples/*/ | xargs -I{} basename {} | jq -R . | jq -sc .)
+          echo "examples=$examples" >> $GITHUB_OUTPUT
+
+  build-examples:
+    runs-on: ubuntu-latest
+    needs: discover-examples
+    strategy:
+      matrix:
+        exampleDir: ${{ fromJson(needs.discover-examples.outputs.examples) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: examples/${{ matrix.exampleDir }}/go.mod
+          cache: true
+          cache-dependency-path: examples/${{ matrix.exampleDir }}/go.sum
+
+      - name: Install Pulumi CLI
+        run: curl -fsSL https://get.pulumi.com | sh && echo "$HOME/.pulumi/bin" >> $GITHUB_PATH
+
+      - name: Install mods
+        run: make tidy
+
+      - name: Build provider
+        run: make bin/examples/pulumi-resource-${{ matrix.exampleDir }}
+
+      - name: Get schema
+        run: make examples/${{ matrix.exampleDir }}/schema.json
+
+      - name: Generate SDKs
+        run: make gen-sdk-${{ matrix.exampleDir }}
