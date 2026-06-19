@@ -317,6 +317,12 @@ func capitalize(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
+// schemaNameToTypeName converts a raw OpenAPI schema name to PascalCase.
+// e.g. "article_translated_content" → "ArticleTranslatedContent"
+func schemaNameToTypeName(name string) string {
+	return buildNameFromSegs([]string{name})
+}
+
 func lowercaseFirst(s string) string {
 	if s == "" {
 		return ""
@@ -640,7 +646,7 @@ func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2hi
 			tc.ensureType(defName, defs)
 			return pschema.PropertySpec{
 				TypeSpec: pschema.TypeSpec{
-					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, defName),
+					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, schemaNameToTypeName(defName)),
 				},
 			}
 		}
@@ -712,7 +718,7 @@ func (tc *typeCollector) arrayItemSpec(schema *highbase.Schema, defs *v2high.Def
 		if defName != "" {
 			tc.ensureType(defName, defs)
 			return pschema.TypeSpec{
-				Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, defName),
+				Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, schemaNameToTypeName(defName)),
 			}
 		}
 	}
@@ -731,7 +737,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 	if defs == nil {
 		return
 	}
-	token := fmt.Sprintf("%s:index:%s", tc.pkgName, defName)
+	token := fmt.Sprintf("%s:index:%s", tc.pkgName, schemaNameToTypeName(defName))
 	if _, exists := tc.types[token]; exists {
 		return
 	}
@@ -1058,7 +1064,7 @@ func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy) pschema.
 			tc.ensureType(name)
 			return pschema.PropertySpec{
 				TypeSpec: pschema.TypeSpec{
-					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, name),
+					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, schemaNameToTypeName(name)),
 				},
 			}
 		}
@@ -1105,7 +1111,7 @@ func (tc *typeCollectorV3) arrayItemSpec(schema *highbase.Schema) pschema.TypeSp
 	if ref := itemProxy.GetReference(); ref != "" {
 		if name := extractComponentSchemaName(ref); name != "" {
 			tc.ensureType(name)
-			return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, name)}
+			return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, schemaNameToTypeName(name))}
 		}
 	}
 	if s := itemProxy.Schema(); s != nil && len(s.Type) > 0 {
@@ -1118,7 +1124,7 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 	if tc.components == nil || tc.components.Schemas == nil {
 		return
 	}
-	token := fmt.Sprintf("%s:index:%s", tc.pkgName, schemaName)
+	token := fmt.Sprintf("%s:index:%s", tc.pkgName, schemaNameToTypeName(schemaName))
 	if _, exists := tc.types[token]; exists {
 		return
 	}

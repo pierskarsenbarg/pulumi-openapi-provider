@@ -600,6 +600,158 @@ func TestDiscover_Override_Token(t *testing.T) {
 	}
 }
 
+// swaggerWithSnakeCaseRef is a Swagger 2.0 spec where a response object has a property that
+// $refs a snake_case definition name, which should produce a PascalCase type token.
+const swaggerWithSnakeCaseRef = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "basePath": "/",
+  "paths": {
+    "/widgets": {
+      "post": {
+        "operationId": "createWidget",
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "meta": {"$ref": "#/definitions/widget_meta_data"}
+      }
+    },
+    "widget_meta_data": {
+      "type": "object",
+      "properties": {
+        "created_at": {"type": "string"}
+      }
+    }
+  }
+}`
+
+func TestDiscover_V2_TypeTokenIsPascalCase(t *testing.T) {
+	result := loadInlineWith(t, swaggerWithSnakeCaseRef, "test")
+	token := "test:index:WidgetMetaData"
+	if _, ok := result.Types[token]; !ok {
+		t.Errorf("expected type token %q to exist; got types: %v", token, keys(result.Types))
+	}
+	for tok := range result.Types {
+		if tok == "test:index:widget_meta_data" {
+			t.Errorf("type token should be PascalCase, got snake_case: %q", tok)
+		}
+	}
+}
+
+// oas3WithSnakeCaseRef is an OAS3 spec where a response object has a property that
+// $refs a snake_case component schema name, which should produce a PascalCase type token.
+const oas3WithSnakeCaseRef = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "servers": [{"url": "https://api.example.com"}],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "requestBody": {
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}
+        },
+        "responses": {
+          "201": {
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}
+          }
+        }
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {
+          "200": {
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}
+          }
+        }
+      },
+      "delete": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "meta": {"$ref": "#/components/schemas/widget_meta_data"}
+        }
+      },
+      "widget_meta_data": {
+        "type": "object",
+        "properties": {
+          "created_at": {"type": "string"}
+        }
+      }
+    }
+  }
+}`
+
+func TestDiscover_OAS3_TypeTokenIsPascalCase(t *testing.T) {
+	result := loadInlineWith(t, oas3WithSnakeCaseRef, "test")
+	token := "test:index:WidgetMetaData"
+	if _, ok := result.Types[token]; !ok {
+		t.Errorf("expected type token %q to exist; got types: %v", token, keys(result.Types))
+	}
+	for tok := range result.Types {
+		if tok == "test:index:widget_meta_data" {
+			t.Errorf("type token should be PascalCase, got snake_case: %q", tok)
+		}
+	}
+}
+
+func loadInlineWith(t *testing.T, content, pkgName string) spec.DiscoveryResult {
+	t.Helper()
+	f, err := os.CreateTemp("", "spec-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(content); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	doc, err := spec.Load("", f.Name())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	result, err := spec.Discover(doc, pkgName, nil)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	return result
+}
+
+func keys[K comparable, V any](m map[K]V) []K {
+	out := make([]K, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}
+
 func TestBuildSchema_Petstore(t *testing.T) {
 	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "")
 	if err != nil {
