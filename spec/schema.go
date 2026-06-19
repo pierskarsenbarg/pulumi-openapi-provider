@@ -23,7 +23,7 @@ func BuildSchema(pkgName, version string, result DiscoveryResult) (string, error
 		Provider:  providerSpec(result.AuthSchemes),
 	}
 
-	data, err := json.Marshal(pkg)
+	data, err := json.MarshalIndent(pkg, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("marshaling schema: %w", err)
 	}

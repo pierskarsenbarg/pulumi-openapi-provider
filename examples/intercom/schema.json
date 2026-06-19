@@ -1,1 +1,2387 @@
-{"name":"intercom","version":"0.1.0","config":{"variables":{"baseUrl":{"type":"string","description":"Base URL for the API (overrides the spec server URL)."},"bearerToken":{"type":"string","description":"Bearer token for the Authorization header.","secret":true}}},"types":{"intercom:index:ArticleTranslatedContent":{"description":"The Translated Content of an Article. The keys are the locale codes and the values are the translated content of the article.","properties":{"ar":{"type":"string"},"bg":{"type":"string"},"bs":{"type":"string"},"ca":{"type":"string"},"cs":{"type":"string"},"da":{"type":"string"},"de":{"type":"string"},"el":{"type":"string"},"en":{"type":"string"},"es":{"type":"string"},"et":{"type":"string"},"fi":{"type":"string"},"fr":{"type":"string"},"he":{"type":"string"},"hr":{"type":"string"},"hu":{"type":"string"},"id":{"type":"string"},"it":{"type":"string"},"ja":{"type":"string"},"ko":{"type":"string"},"lt":{"type":"string"},"lv":{"type":"string"},"mn":{"type":"string"},"nb":{"type":"string"},"nl":{"type":"string"},"pl":{"type":"string"},"pt":{"type":"string"},"pt-BR":{"type":"string"},"ro":{"type":"string"},"ru":{"type":"string"},"sl":{"type":"string"},"sr":{"type":"string"},"sv":{"type":"string"},"tr":{"type":"string"},"type":{"type":"string","description":"The type of object - article_translated_content."},"vi":{"type":"string"},"zh-CN":{"type":"string"},"zh-TW":{"type":"string"}},"type":"object"},"intercom:index:ContactReference":{"description":"reference to contact object","properties":{"external_id":{"type":"string","description":"The unique identifier for the contact which is provided by the Client."},"id":{"type":"string","description":"The unique identifier for the contact which is given by Intercom."},"type":{"type":"string","description":"always contact"}},"type":"object"},"intercom:index:ConversationContacts":{"description":"The list of contacts (users or leads) involved in this conversation. This will only contain one customer unless more were added via the group conversation feature.","properties":{"contacts":{"type":"array","items":{"$ref":"#/types/intercom:index:ContactReference"},"description":"The list of contacts (users or leads) involved in this conversation. This will only contain one customer unless more were added via the group conversation feature."},"type":{"type":"string"}},"type":"object"},"intercom:index:ConversationFirstContactReply":{"description":"An object containing information on the first users message. For a contact initiated message this will represent the users original message.","properties":{"created_at":{"type":"integer"},"type":{"type":"string"},"url":{"type":"string"}},"type":"object"},"intercom:index:ConversationPart":{"description":"A Conversation Part represents a message in the conversation.","properties":{"app_package_code":{"type":"string","description":"The app package code if this part was created via API. null if the part was not created via API."},"assigned_to":{"type":"string"},"attachments":{"type":"array","items":{"$ref":"#/types/intercom:index:PartAttachment"},"description":"A list of attachments for the part."},"author":{"$ref":"#/types/intercom:index:ConversationPartAuthor"},"body":{"type":"string","description":"The message body, which may contain HTML. For Twitter, this will show a generic message regarding why the body is obscured. In webhook payloads for API version 2.15+, this field returns plain text."},"created_at":{"type":"integer","description":"The time the conversation part was created."},"email_message_metadata":{"type":"string"},"event_details":{"type":"string"},"external_id":{"type":"string","description":"The external id of the conversation part"},"id":{"type":"string","description":"The id representing the conversation part."},"metadata":{"type":"string"},"notified_at":{"type":"integer","description":"The time the user was notified with the conversation part."},"part_type":{"type":"string","description":"The type of conversation part."},"redacted":{"type":"boolean","description":"Whether or not the conversation part has been redacted."},"state":{"type":"string","description":"Indicates the current state of conversation when the conversation part was created."},"tags":{"type":"array","items":{"$ref":"#/types/intercom:index:TagBasic"},"description":"A list of tags objects associated with the conversation part."},"type":{"type":"string","description":"Always conversation_part"},"updated_at":{"type":"integer","description":"The last time the conversation part was updated."}},"type":"object"},"intercom:index:ConversationPartAuthor":{"description":"The object who initiated the conversation, which can be a Contact, Admin or Team. Bots and campaigns send messages on behalf of Admins or Teams. For Twitter, this will be blank.","properties":{"email":{"type":"string","description":"The email of the author"},"from_ai_agent":{"type":"boolean","description":"If this conversation part was sent by the AI Agent"},"id":{"type":"string","description":"The id of the author"},"is_ai_answer":{"type":"boolean","description":"If this conversation part body was generated by the AI Agent"},"name":{"type":"string","description":"The name of the author"},"type":{"type":"string","description":"The type of the author"}},"type":"object"},"intercom:index:ConversationParts":{"description":"A list of Conversation Part objects for each part message in the conversation. This is only returned when Retrieving a Conversation, and ignored when Listing all Conversations. There is a limit of 500 parts.","properties":{"conversation_parts":{"type":"array","items":{"$ref":"#/types/intercom:index:ConversationPart"},"description":"A list of Conversation Part objects for each part message in the conversation. This is only returned when Retrieving a Conversation, and ignored when Listing all Conversations. There is a limit of 500 parts."},"total_count":{"type":"integer"},"type":{"type":"string"}},"type":"object"},"intercom:index:ConversationRating":{"description":"The Conversation Rating object which contains information on the rating and/or remark added by a Contact and the Admin assigned to the conversation.","properties":{"contact":{"$ref":"#/types/intercom:index:ContactReference"},"created_at":{"type":"integer","description":"The time the rating was requested in the conversation being rated."},"rating":{"type":"integer","description":"The rating, between 1 and 5, for the conversation."},"remark":{"type":"string","description":"An optional field to add a remark to correspond to the number rating"},"teammate":{"$ref":"#/types/intercom:index:Reference"},"updated_at":{"type":"integer","description":"The time the rating was last updated."}},"type":"object"},"intercom:index:ConversationResponseTime":{"description":"Details of first response time of assigned team in seconds.","properties":{"response_time":{"type":"integer","description":"First response time of assigned team in seconds."},"team_id":{"type":"integer","description":"Id of the assigned team."},"team_name":{"type":"string","description":"Name of the assigned Team, null if team does not exist, Unassigned if no team is assigned."}},"type":"object"},"intercom:index:ConversationSource":{"description":"The type of the conversation part that started this conversation. Can be Contact, Admin, Campaign, Automated or Operator initiated.","properties":{"attachments":{"type":"array","items":{"$ref":"#/types/intercom:index:PartAttachment"},"description":"A list of attachments for the part."},"author":{"$ref":"#/types/intercom:index:ConversationPartAuthor"},"body":{"type":"string","description":"The message body, which may contain HTML. For Twitter, this will show a generic message regarding why the body is obscured. In webhook payloads for API version 2.15+, this field returns plain text."},"delivered_as":{"type":"string","description":"The conversation's initiation type. Possible values are customer_initiated, campaigns_initiated (legacy campaigns), operator_initiated (Custom bot), automated (Series and other outbounds with dynamic audience message) and admin_initiated (fixed audience message, ticket initiated by an admin, group email)."},"id":{"type":"string","description":"The id representing the message."},"redacted":{"type":"boolean","description":"Whether or not the source message has been redacted. Only applicable for contact initiated messages."},"subject":{"type":"string","description":"Optional. The message subject. For Twitter, this will show a generic message regarding why the subject is obscured. In webhook payloads for API version 2.15+, this field returns plain text."},"type":{"type":"string","description":"This includes conversation, email, facebook, instagram, phone_call, phone_switch, push, sms, twitter and whatsapp."},"url":{"type":"string","description":"The URL where the conversation was started. For Twitter, Email, and Bots, this will be blank."}},"type":"object"},"intercom:index:ConversationStatistics":{"description":"A Statistics object containing all information required for reporting, with timestamps and calculated metrics.","properties":{"adjusted_handling_time":{"type":"integer","description":"Adjusted handling time for conversation in seconds. This is the active handling time excluding idle periods when teammates are not actively working on the conversation."},"assigned_team_first_response_time":{"type":"array","items":{"$ref":"#/types/intercom:index:ConversationResponseTime"},"description":"An array of conversation response time objects"},"assigned_team_first_response_time_in_office_hours":{"type":"array","items":{"$ref":"#/types/intercom:index:ConversationResponseTime"},"description":"An array of conversation response time objects within office hours"},"count_assignments":{"type":"integer","description":"Number of assignments after first_contact_reply_at."},"count_conversation_parts":{"type":"integer","description":"Total number of conversation parts."},"count_reopens":{"type":"integer","description":"Number of reopens after first_contact_reply_at."},"first_admin_reply_at":{"type":"integer","description":"Time of first admin reply after first_contact_reply_at."},"first_assignment_at":{"type":"integer","description":"Time of first assignment after first_contact_reply_at."},"first_close_at":{"type":"integer","description":"Time of first close after first_contact_reply_at."},"first_contact_reply_at":{"type":"integer","description":"Time of first text conversation part from a contact."},"handling_time":{"type":"integer","description":"Time from conversation assignment to conversation close in seconds."},"last_admin_reply_at":{"type":"integer","description":"Time of the last conversation part from an admin."},"last_assignment_admin_reply_at":{"type":"integer","description":"Time of first admin reply since most recent assignment."},"last_assignment_at":{"type":"integer","description":"Time of last assignment after first_contact_reply_at."},"last_close_at":{"type":"integer","description":"Time of the last conversation close."},"last_closed_by_id":{"type":"string","description":"The last admin who closed the conversation. Returns a reference to an Admin object."},"last_contact_reply_at":{"type":"integer","description":"Time of the last conversation part from a contact."},"median_time_to_reply":{"type":"integer","description":"Median based on all admin replies after a contact reply. Subtracts out of business hours. In seconds."},"time_to_admin_reply":{"type":"integer","description":"Duration until first admin reply. Subtracts out of business hours. In seconds."},"time_to_assignment":{"type":"integer","description":"Duration until last assignment before first admin reply. In seconds."},"time_to_first_close":{"type":"integer","description":"Duration until conversation was closed first time. Subtracts out of business hours. In seconds."},"time_to_last_close":{"type":"integer","description":"Duration until conversation was closed last time. Subtracts out of business hours. In seconds."},"type":{"type":"string"}},"type":"object"},"intercom:index:ConversationTeammates":{"description":"The list of teammates who participated in the conversation (wrote at least one conversation part).","properties":{"teammates":{"type":"array","items":{"$ref":"#/types/intercom:index:Reference"},"description":"The list of teammates who participated in the conversation (wrote at least one conversation part)."},"type":{"type":"string","description":"The type of the object - `admin.list`."}},"type":"object"},"intercom:index:CustomAttributes":{"description":"An object containing the different custom attributes associated to the conversation as key-value pairs. For relationship attributes the value will be a list of custom object instance models. System-defined attributes such as \"CX Score rating\" and \"CX Score explanation\" may also be included.","type":"object"},"intercom:index:LinkedObject":{"description":"A linked conversation or ticket.","properties":{"category":{"type":"string","description":"Category of the Linked Ticket Object."},"id":{"type":"string","description":"The ID of the linked object"},"type":{"type":"string","description":"ticket or conversation"}},"type":"object"},"intercom:index:LinkedObjectList":{"description":"An object containing metadata about linked conversations and linked tickets. Up to 1000 can be returned.","properties":{"data":{"type":"array","items":{"$ref":"#/types/intercom:index:LinkedObject"},"description":"An array containing the linked conversations and linked tickets."},"has_more":{"type":"boolean","description":"Whether or not there are more linked objects than returned."},"total_count":{"type":"integer","description":"The total number of linked objects."},"type":{"type":"string","description":"Always list."}},"type":"object"},"intercom:index:NewsfeedAssignment":{"description":"Assigns a news item to a newsfeed.","properties":{"newsfeed_id":{"type":"integer","description":"The unique identifier for the newsfeed which is given by Intercom. Publish dates cannot be in the future, to schedule news items use the dedicated feature in app (see this article)."},"published_at":{"type":"integer","description":"Publish date of the news item on the newsfeed, use this field if you want to set a publish date in the past (e.g. when importing existing news items). On write, this field will be ignored if the news item state is \"draft\"."}},"type":"object"},"intercom:index:PartAttachment":{"description":"The file attached to a part","properties":{"content_type":{"type":"string","description":"The content type of the attachment"},"filesize":{"type":"integer","description":"The size of the attachment"},"height":{"type":"integer","description":"The height of the attachment"},"name":{"type":"string","description":"The name of the attachment"},"type":{"type":"string","description":"The type of attachment"},"url":{"type":"string","description":"The URL of the attachment"},"width":{"type":"integer","description":"The width of the attachment"}},"type":"object"},"intercom:index:Reference":{"description":"reference to another object","properties":{"id":{"type":"string"},"type":{"type":"string"}},"type":"object"},"intercom:index:SlaApplied":{"description":"The SLA Applied object contains the details for which SLA has been applied to this conversation.\nImportant: if there are any canceled sla_events for the conversation - meaning an SLA has been manually removed from a conversation, the sla_status will always be returned as null.\n","properties":{"sla_name":{"type":"string","description":"The name of the SLA as given by the teammate when it was created."},"sla_status":{"type":"string","description":"SLA statuses:\n            - `hit`: If there’s at least one hit event in the underlying sla_events table, and no “missed” or “canceled” events for the conversation.\n            - `missed`: If there are any missed sla_events for the conversation and no canceled events. If there’s even a single missed sla event, the status will always be missed. A missed status is not applied when the SLA expires, only the next time a teammate replies.\n            - `active`: An SLA has been applied to a conversation, but has not yet been fulfilled. SLA status is active only if there are no “hit, “missed”, or “canceled” events."},"type":{"type":"string","description":"object type"}},"type":"object"},"intercom:index:Tag":{"description":"A tag allows you to label your contacts, companies, and conversations and list them using that tag.","properties":{"applied_at":{"type":"integer","description":"The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"applied_by":{"type":"object","description":"The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"id":{"type":"string","description":"The id of the tag"},"name":{"type":"string","description":"The name of the tag"},"type":{"type":"string","description":"value is \"tag\""}},"type":"object"},"intercom:index:TagBasic":{"description":"A tag allows you to label your contacts, companies, and conversations and list them using that tag.","properties":{"id":{"type":"string","description":"The id of the tag"},"name":{"type":"string","description":"The name of the tag"},"type":{"type":"string","description":"value is \"tag\""}},"type":"object"},"intercom:index:Tags":{"description":"A list of tags objects associated with a conversation","properties":{"tags":{"type":"array","items":{"$ref":"#/types/intercom:index:Tag"},"description":"A list of tags objects associated with the conversation."},"type":{"type":"string","description":"The type of the object"}},"type":"object"},"intercom:index:TicketContacts":{"description":"The list of contacts affected by a ticket.","properties":{"contacts":{"type":"array","items":{"$ref":"#/types/intercom:index:ContactReference"},"description":"The list of contacts affected by this ticket."},"type":{"type":"string","description":"always contact.list"}},"type":"object"},"intercom:index:TicketCustomAttributes":{"description":"An object containing the different attributes associated to the ticket as key-value pairs. For the default title and description attributes, the keys are `_default_title_` and `_default_description_`.","type":"object"},"intercom:index:TicketPart":{"description":"A Ticket Part represents a message in the ticket.","properties":{"app_package_code":{"type":"string","description":"The app package code if this part was created via API. Note this field won't show if the part was not created via API."},"assigned_to":{"type":"string"},"attachments":{"type":"array","items":{"$ref":"#/types/intercom:index:PartAttachment"},"description":"A list of attachments for the part."},"author":{"$ref":"#/types/intercom:index:TicketPartAuthor"},"body":{"type":"string","description":"The message body, which may contain HTML."},"created_at":{"type":"integer","description":"The time the ticket part was created."},"external_id":{"type":"string","description":"The external id of the ticket part"},"id":{"type":"string","description":"The id representing the ticket part."},"part_type":{"type":"string","description":"The type of ticket part."},"previous_ticket_state":{"type":"string","description":"The previous state of the ticket."},"redacted":{"type":"boolean","description":"Whether or not the ticket part has been redacted."},"ticket_state":{"type":"string","description":"The state of the ticket."},"type":{"type":"string","description":"Always ticket_part"},"updated_at":{"type":"integer","description":"The last time the ticket part was updated."},"updated_attribute_data":{"type":"object","description":"The updated attribute data of the ticket part. Only present for attribute update parts."}},"type":"object"},"intercom:index:TicketPartAuthor":{"description":"The author that wrote or triggered the part. Can be a bot, admin, team or user.","properties":{"email":{"type":"string","description":"The email of the author"},"id":{"type":"string","description":"The id of the author"},"name":{"type":"string","description":"The name of the author"},"type":{"type":"string","description":"The type of the author"}},"type":"object"},"intercom:index:TicketParts":{"description":"A list of Ticket Part objects for each note and event in the ticket. There is a limit of 500 parts.","properties":{"ticket_parts":{"type":"array","items":{"$ref":"#/types/intercom:index:TicketPart"},"description":"A list of Ticket Part objects for each ticket. There is a limit of 500 parts."},"total_count":{"type":"integer"},"type":{"type":"string"}},"type":"object"},"intercom:index:TicketState":{"description":"A ticket state, used to define the state of a ticket.","properties":{"category":{"type":"string","description":"The category of the ticket state"},"external_label":{"type":"string","description":"The state the ticket is currently in, in a human readable form - visible to customers, in the messenger, email and tickets portal."},"id":{"type":"string","description":"The id of the ticket state"},"internal_label":{"type":"string","description":"The state the ticket is currently in, in a human readable form - visible in Intercom"},"type":{"type":"string","description":"String representing the object's type. Always has the value `ticket_state`."}},"type":"object"},"intercom:index:TicketType":{"description":"A ticket type, used to define the data fields to be captured in a ticket.","properties":{"archived":{"type":"boolean","description":"Whether the ticket type is archived or not."},"category":{"type":"string","description":"Category of the Ticket Type."},"created_at":{"type":"integer","description":"The date and time the ticket type was created."},"description":{"type":"string","description":"The description of the ticket type"},"icon":{"type":"string","description":"The icon of the ticket type"},"id":{"type":"string","description":"The id representing the ticket type."},"name":{"type":"string","description":"The name of the ticket type"},"ticket_states":{"type":"object","description":"A list of ticket states associated with a given ticket type."},"ticket_type_attributes":{"$ref":"#/types/intercom:index:TicketTypeAttributeList"},"type":{"type":"string","description":"String representing the object's type. Always has the value `ticket_type`."},"updated_at":{"type":"integer","description":"The date and time the ticket type was last updated."},"workspace_id":{"type":"string","description":"The id of the workspace that the ticket type belongs to."}},"type":"object"},"intercom:index:TicketTypeAttribute":{"description":"Ticket type attribute, used to define each data field to be captured in a ticket.","properties":{"archived":{"type":"boolean","description":"Whether the ticket type attribute is archived or not."},"created_at":{"type":"integer","description":"The date and time the ticket type attribute was created."},"data_type":{"type":"string","description":"The type of the data attribute (allowed values: \"string list integer decimal boolean datetime files\")"},"default":{"type":"boolean","description":"Whether the attribute is built in or not."},"description":{"type":"string","description":"The description of the ticket type attribute"},"id":{"type":"string","description":"The id representing the ticket type attribute."},"input_options":{"type":"object","description":"Input options for the attribute"},"name":{"type":"string","description":"The name of the ticket type attribute"},"order":{"type":"integer","description":"The order of the attribute against other attributes"},"required_to_create":{"type":"boolean","description":"Whether the attribute is required or not for teammates."},"required_to_create_for_contacts":{"type":"boolean","description":"Whether the attribute is required or not for contacts."},"ticket_type_id":{"type":"integer","description":"The id of the ticket type that the attribute belongs to."},"type":{"type":"string","description":"String representing the object's type. Always has the value `ticket_type_attribute`."},"updated_at":{"type":"integer","description":"The date and time the ticket type attribute was last updated."},"visible_on_create":{"type":"boolean","description":"Whether the attribute is visible or not to teammates."},"visible_to_contacts":{"type":"boolean","description":"Whether the attribute is visible or not to contacts."},"workspace_id":{"type":"string","description":"The id of the workspace that the ticket type attribute belongs to."}},"type":"object"},"intercom:index:TicketTypeAttributeList":{"description":"A list of attributes associated with a given ticket type.","properties":{"ticket_type_attributes":{"type":"array","items":{"$ref":"#/types/intercom:index:TicketTypeAttribute"},"description":"A list of ticket type attributes associated with a given ticket type."},"type":{"type":"string","description":"String representing the object's type. Always has the value `ticket_type_attributes.list`."}},"type":"object"},"intercom:index:Translation":{"description":"A translation object contains the localised details of a subscription type.","properties":{"description":{"type":"string","description":"The localised description of the subscription type."},"locale":{"type":"string","description":"The two character identifier for the language of the translation object."},"name":{"type":"string","description":"The localised name of the subscription type."}},"type":"object"}},"provider":{"inputProperties":{"baseUrl":{"type":"string","description":"Base URL for the API (overrides the spec server URL)."},"bearerToken":{"type":"string","description":"Bearer token for the Authorization header.","secret":true}}},"resources":{"intercom:aicontent:AiContentImportSources":{"properties":{"created_at":{"type":"integer","description":"The time when the content import source was created."},"last_synced_at":{"type":"integer","description":"The time when the content import source was last synced."},"status":{"type":"string","description":"The status of the content import source."},"sync_behavior":{"type":"string","description":"If you intend to create or update External Pages via the API, this should be set to `api`."},"type":{"type":"string","description":"Always external_page"},"updated_at":{"type":"integer","description":"The time when the content import source was last updated."},"url":{"type":"string","description":"The URL of the content import source."}},"inputProperties":{"status":{"type":"string","description":"The status of the content import source."},"sync_behavior":{"type":"string","description":"If you intend to create or update External Pages via the API, this should be set to `api`."},"url":{"type":"string","description":"The URL of the content import source."}},"requiredInputs":["sync_behavior","url"]},"intercom:aicontent:AiExternalPages":{"properties":{"ai_agent_availability":{"type":"boolean","description":"Whether the external page should be used to answer questions by AI Agent. Will not default when updating an existing external page."},"ai_copilot_availability":{"type":"boolean","description":"Whether the external page should be used to answer questions by AI Copilot. Will not default when updating an existing external page."},"ai_sales_agent_availability":{"type":"boolean","description":"Whether the external page should be used to answer questions by AI Sales Agent."},"created_at":{"type":"integer","description":"The time when the external page was created."},"external_id":{"type":"string","description":"The identifier for the external page which was given by the source. Must be unique for the source."},"fin_availability":{"type":"boolean","description":"Deprecated. Use ai_agent_availability and ai_copilot_availability instead."},"html":{"type":"string","description":"The body of the external page in HTML."},"last_ingested_at":{"type":"integer","description":"The time when the external page was last ingested."},"locale":{"type":"string","description":"Always en"},"source_id":{"type":"integer","description":"The unique identifier for the source of the external page which was given by Intercom. Every external page must be associated with a Content Import Source which represents the place it comes from and from which it inherits a default audience (configured in the UI). For a new source, make a POST request to the Content Import Source endpoint and an ID for the source will be returned in the response."},"title":{"type":"string","description":"The title of the external page."},"type":{"type":"string","description":"Always external_page"},"updated_at":{"type":"integer","description":"The time when the external page was last updated."},"url":{"type":"string","description":"The URL of the external page. This will be used by Fin to link end users to the page it based its answer on. When a URL is not present, Fin will not reference the source."}},"inputProperties":{"ai_agent_availability":{"type":"boolean","description":"Whether the external page should be used to answer questions by AI Agent. Will not default when updating an existing external page."},"ai_copilot_availability":{"type":"boolean","description":"Whether the external page should be used to answer questions by AI Copilot. Will not default when updating an existing external page."},"external_id":{"type":"string","description":"The identifier for the external page which was given by the source. Must be unique for the source."},"html":{"type":"string","description":"The body of the external page in HTML."},"locale":{"type":"string","description":"Always en"},"source_id":{"type":"integer","description":"The unique identifier for the source of the external page which was given by Intercom. Every external page must be associated with a Content Import Source which represents the place it comes from and from which it inherits a default audience (configured in the UI). For a new source, make a POST request to the Content Import Source endpoint and an ID for the source will be returned in the response."},"title":{"type":"string","description":"The title of the external page."},"url":{"type":"string","description":"The URL of the external page. This will be used by Fin to link end users to the page it based its answer on. When a URL is not present, Fin will not reference the source."}},"requiredInputs":["title","html","locale","source_id","external_id"]},"intercom:articles:Articles":{"properties":{"author_id":{"type":"integer","description":"The id of the author of the article. For multilingual articles, this will be the id of the author of the default language's content. Must be a teammate on the help center's workspace."},"body":{"type":"string","description":"The content of the article. For multilingual articles, this will be the body of the default language's content."},"description":{"type":"string","description":"The description of the article. For multilingual articles, this will be the description of the default language's content."},"parent_id":{"type":"integer","description":"The id of the article's parent collection or section. An article without this field stands alone."},"parent_type":{"type":"string","description":"The type of parent, which can either be a `collection` or `section`."},"state":{"type":"string","description":"Whether the article will be `published` or will be a `draft`. Defaults to draft. For multilingual articles, this will be the state of the default language's content."},"statistics":{"type":"string"},"title":{"type":"string","description":"The title of the article.For multilingual articles, this will be the title of the default language's content."},"translated_content":{"$ref":"#/types/intercom:index:ArticleTranslatedContent"}},"inputProperties":{"author_id":{"type":"integer","description":"The id of the author of the article. For multilingual articles, this will be the id of the author of the default language's content. Must be a teammate on the help center's workspace."},"body":{"type":"string","description":"The content of the article. For multilingual articles, this will be the body of the default language's content."},"description":{"type":"string","description":"The description of the article. For multilingual articles, this will be the description of the default language's content."},"parent_id":{"type":"integer","description":"The id of the article's parent collection or section. An article without this field stands alone."},"parent_type":{"type":"string","description":"The type of parent, which can either be a `collection` or `section`."},"state":{"type":"string","description":"Whether the article will be `published` or will be a `draft`. Defaults to draft. For multilingual articles, this will be the state of the default language's content."},"title":{"type":"string","description":"The title of the article.For multilingual articles, this will be the title of the default language's content."},"translated_content":{"$ref":"#/types/intercom:index:ArticleTranslatedContent"}},"requiredInputs":["title","author_id"]},"intercom:companies:Companies":{"properties":{"app_id":{"type":"string","description":"The Intercom defined code of the workspace the company is associated to."},"company_id":{"type":"string","description":"The company id you have defined for the company. Can't be updated"},"created_at":{"type":"integer","description":"The time the company was added in Intercom."},"custom_attributes":{"type":"object","description":"A hash of key/value pairs containing any other data about the company you want Intercom to store."},"industry":{"type":"string","description":"The industry that this company operates in."},"last_request_at":{"type":"integer","description":"The time the company last recorded making a request."},"monthly_spend":{"type":"integer","description":"How much revenue the company generates for your business. Note that this will truncate floats. i.e. it only allow for whole integers, 155.98 will be truncated to 155. Note that this has an upper limit of 2**31-1 or 2147483647.."},"name":{"type":"string","description":"The name of the Company"},"plan":{"type":"string","description":"The name of the plan you have associated with the company."},"remote_created_at":{"type":"integer","description":"The time the company was created by you."},"segments":{"type":"object","description":"The list of segments associated with the company"},"session_count":{"type":"integer","description":"How many sessions the company has recorded."},"size":{"type":"integer","description":"The number of employees in this company."},"tags":{"type":"object","description":"The list of tags associated with the company"},"type":{"type":"string","description":"Value is `company`"},"updated_at":{"type":"integer","description":"The last time the company was updated."},"user_count":{"type":"integer","description":"The number of users in the company."},"website":{"type":"string","description":"The URL for this company's website. Please note that the value specified here is not validated. Accepts any string."}},"inputProperties":{"company_id":{"type":"string","description":"The company id you have defined for the company. Can't be updated"},"custom_attributes":{"type":"object","description":"A hash of key/value pairs containing any other data about the company you want Intercom to store."},"industry":{"type":"string","description":"The industry that this company operates in."},"monthly_spend":{"type":"integer","description":"How much revenue the company generates for your business. Note that this will truncate floats. i.e. it only allow for whole integers, 155.98 will be truncated to 155. Note that this has an upper limit of 2**31-1 or 2147483647.."},"name":{"type":"string","description":"The name of the Company"},"plan":{"type":"string","description":"The name of the plan you have associated with the company."},"remote_created_at":{"type":"integer","description":"The time the company was created by you."},"size":{"type":"integer","description":"The number of employees in this company."},"website":{"type":"string","description":"The URL for this company's website. Please note that the value specified here is not validated. Accepts any string."}}},"intercom:companies:ContactsCompanies":{"properties":{"app_id":{"type":"string","description":"The Intercom defined code of the workspace the company is associated to."},"company_id":{"type":"string","description":"The company id you have defined for the company."},"contact_id":{"type":"string"},"created_at":{"type":"integer","description":"The time the company was added in Intercom."},"custom_attributes":{"type":"object","description":"The custom attributes you have set on the company."},"industry":{"type":"string","description":"The industry that the company operates in."},"last_request_at":{"type":"integer","description":"The time the company last recorded making a request."},"monthly_spend":{"type":"integer","description":"How much revenue the company generates for your business."},"name":{"type":"string","description":"The name of the company."},"plan":{"type":"object"},"remote_created_at":{"type":"integer","description":"The time the company was created by you."},"segments":{"type":"object","description":"The list of segments associated with the company"},"session_count":{"type":"integer","description":"How many sessions the company has recorded."},"size":{"type":"integer","description":"The number of employees in the company."},"tags":{"type":"object","description":"The list of tags associated with the company"},"type":{"type":"string","description":"Value is `company`"},"updated_at":{"type":"integer","description":"The last time the company was updated."},"user_count":{"type":"integer","description":"The number of users in the company."},"website":{"type":"string","description":"The URL for the company website."}},"inputProperties":{"contact_id":{"type":"string"}},"requiredInputs":["contact_id"]},"intercom:contacts:Contacts":{"properties":{"enabled_push_messaging":{"type":"boolean","description":"If the user has enabled push messaging."}}},"intercom:conversations:Conversations":{"properties":{"admin_assignee_id":{"type":"integer","description":"The id of the admin assigned to the conversation. If it's not assigned to an admin it will return null."},"ai_agent":{"type":"string"},"ai_agent_participated":{"type":"boolean","description":"Indicates whether the AI Agent participated in the conversation."},"attachment_urls":{"type":"array","items":{"type":"string"},"description":"A list of image URLs that will be added as attachments. You can include up to 10 URLs."},"body":{"type":"string","description":"The content of the message. HTML is not supported."},"company":{"type":"string"},"contacts":{"$ref":"#/types/intercom:index:ConversationContacts"},"conversation_parts":{"$ref":"#/types/intercom:index:ConversationParts"},"conversation_rating":{"$ref":"#/types/intercom:index:ConversationRating"},"created_at":{"type":"integer","description":"The time the conversation was created as a UTC Unix timestamp. If not provided, the current time will be used. This field is only recommneded for migrating past conversations from another source into Intercom."},"custom_attributes":{"$ref":"#/types/intercom:index:CustomAttributes"},"first_contact_reply":{"$ref":"#/types/intercom:index:ConversationFirstContactReply"},"from":{"type":"object"},"linked_objects":{"$ref":"#/types/intercom:index:LinkedObjectList"},"open":{"type":"boolean","description":"Indicates whether a conversation is open (true) or closed (false)."},"priority":{"type":"string","description":"If marked as priority, it will return priority or else not_priority."},"read":{"type":"boolean","description":"Indicates whether a conversation has been read."},"sla_applied":{"$ref":"#/types/intercom:index:SlaApplied"},"snoozed_until":{"type":"integer","description":"If set this is the time in the future when this conversation will be marked as open. i.e. it will be in a snoozed state until this time. i.e. it will be in a snoozed state until this time."},"source":{"$ref":"#/types/intercom:index:ConversationSource"},"state":{"type":"string","description":"Can be set to \"open\", \"closed\" or \"snoozed\"."},"statistics":{"$ref":"#/types/intercom:index:ConversationStatistics"},"subject":{"type":"string","description":"The title of the email. Only applicable if the message type is email."},"tags":{"$ref":"#/types/intercom:index:Tags"},"team_assignee_id":{"type":"integer","description":"The id of the team assigned to the conversation. If it's not assigned to a team it will return null."},"teammates":{"$ref":"#/types/intercom:index:ConversationTeammates"},"title":{"type":"string","description":"The title given to the conversation."},"type":{"type":"string","description":"Always conversation."},"updated_at":{"type":"integer","description":"The last time the conversation was updated."},"waiting_since":{"type":"integer","description":"The last time a Contact responded to an Admin. In other words, the time a customer started waiting for a response. Set to null if last reply is from an Admin."}},"inputProperties":{"attachment_urls":{"type":"array","items":{"type":"string"},"description":"A list of image URLs that will be added as attachments. You can include up to 10 URLs."},"body":{"type":"string","description":"The content of the message. HTML is not supported."},"created_at":{"type":"integer","description":"The time the conversation was created as a UTC Unix timestamp. If not provided, the current time will be used. This field is only recommneded for migrating past conversations from another source into Intercom."},"from":{"type":"object"},"subject":{"type":"string","description":"The title of the email. Only applicable if the message type is email."}},"requiredInputs":["from","body"]},"intercom:conversations:ConversationsCustomers":{"properties":{"admin_assignee_id":{"type":"integer","description":"The id of the admin assigned to the conversation. If it's not assigned to an admin it will return null."},"admin_id":{"type":"string","description":"The `id` of the admin who is adding the new participant."},"ai_agent":{"type":"string"},"ai_agent_participated":{"type":"boolean","description":"Indicates whether the AI Agent participated in the conversation."},"company":{"type":"string"},"contacts":{"$ref":"#/types/intercom:index:ConversationContacts"},"conversation_id":{"type":"string"},"conversation_parts":{"$ref":"#/types/intercom:index:ConversationParts"},"conversation_rating":{"$ref":"#/types/intercom:index:ConversationRating"},"created_at":{"type":"integer","description":"The time the conversation was created."},"custom_attributes":{"$ref":"#/types/intercom:index:CustomAttributes"},"customer":{"type":"object"},"first_contact_reply":{"$ref":"#/types/intercom:index:ConversationFirstContactReply"},"linked_objects":{"$ref":"#/types/intercom:index:LinkedObjectList"},"open":{"type":"boolean","description":"Indicates whether a conversation is open (true) or closed (false)."},"priority":{"type":"string","description":"If marked as priority, it will return priority or else not_priority."},"read":{"type":"boolean","description":"Indicates whether a conversation has been read."},"sla_applied":{"$ref":"#/types/intercom:index:SlaApplied"},"snoozed_until":{"type":"integer","description":"If set this is the time in the future when this conversation will be marked as open. i.e. it will be in a snoozed state until this time. i.e. it will be in a snoozed state until this time."},"source":{"$ref":"#/types/intercom:index:ConversationSource"},"state":{"type":"string","description":"Can be set to \"open\", \"closed\" or \"snoozed\"."},"statistics":{"$ref":"#/types/intercom:index:ConversationStatistics"},"tags":{"$ref":"#/types/intercom:index:Tags"},"team_assignee_id":{"type":"integer","description":"The id of the team assigned to the conversation. If it's not assigned to a team it will return null."},"teammates":{"$ref":"#/types/intercom:index:ConversationTeammates"},"title":{"type":"string","description":"The title given to the conversation."},"type":{"type":"string","description":"Always conversation."},"updated_at":{"type":"integer","description":"The last time the conversation was updated."},"waiting_since":{"type":"integer","description":"The last time a Contact responded to an Admin. In other words, the time a customer started waiting for a response. Set to null if last reply is from an Admin."}},"inputProperties":{"admin_id":{"type":"string","description":"The `id` of the admin who is adding the new participant."},"conversation_id":{"type":"string"},"customer":{"type":"object"}},"requiredInputs":["conversation_id"]},"intercom:customobjectinstances:CustomObjectInstances":{"properties":{"created_at":{"type":"integer","description":"The time the attribute was created as a UTC Unix timestamp"},"custom_attributes":{"type":"object","description":"The custom attributes which are set for the Custom Object instance."},"custom_object_type_identifier":{"type":"string"},"external_created_at":{"type":"integer","description":"The time when the Custom Object instance was created in the external system it originated from."},"external_id":{"type":"string","description":"A unique identifier for the Custom Object instance in the external system it originated from."},"external_updated_at":{"type":"integer","description":"The time when the Custom Object instance was last updated in the external system it originated from."},"type":{"type":"string","description":"The identifier of the custom object type that defines the structure of the custom object instance."},"updated_at":{"type":"integer","description":"The time the attribute was last updated as a UTC Unix timestamp"}},"inputProperties":{"custom_attributes":{"type":"object","description":"The custom attributes which are set for the Custom Object instance."},"custom_object_type_identifier":{"type":"string"},"external_created_at":{"type":"integer","description":"The time when the Custom Object instance was created in the external system it originated from."},"external_id":{"type":"string","description":"A unique identifier for the Custom Object instance in the external system it originated from."},"external_updated_at":{"type":"integer","description":"The time when the Custom Object instance was last updated in the external system it originated from."}},"requiredInputs":["custom_object_type_identifier"]},"intercom:dataexport:ExportContentData":{"properties":{"created_at_after":{"type":"integer","description":"The start date that you request data for. It must be formatted as a unix timestamp."},"created_at_before":{"type":"integer","description":"The end date that you request data for. It must be formatted as a unix timestamp."},"download_expires_at":{"type":"string","description":"The time after which you will not be able to access the data."},"download_url":{"type":"string","description":"The location where you can download your data."},"status":{"type":"string","description":"The current state of your job."}},"inputProperties":{"created_at_after":{"type":"integer","description":"The start date that you request data for. It must be formatted as a unix timestamp."},"created_at_before":{"type":"integer","description":"The end date that you request data for. It must be formatted as a unix timestamp."}},"requiredInputs":["created_at_after","created_at_before"]},"intercom:helpcenter:HelpCenterCollections":{"properties":{"created_at":{"type":"integer","description":"The time when the article was created (seconds). For multilingual articles, this will be the timestamp of creation of the default language's content."},"default_locale":{"type":"string","description":"The default locale of the help center. This field is only returned for multilingual help centers."},"description":{"type":"string","description":"The description of the collection. For multilingual collections, this will be the description of the default language's content."},"help_center_id":{"type":"integer","description":"The id of the help center where the collection will be created. If `null` then it will be created in the default help center."},"icon":{"type":"string","description":"The icon of the collection."},"name":{"type":"string","description":"The name of the collection. For multilingual collections, this will be the name of the default language's content."},"order":{"type":"integer","description":"The order of the section in relation to others sections within a collection. Values go from `0` upwards. `0` is the default if there's no order."},"parent_id":{"type":"string","description":"The id of the parent collection. If `null` then it will be created as the first level collection."},"translated_content":{"type":"string"},"updated_at":{"type":"integer","description":"The time when the article was last updated (seconds). For multilingual articles, this will be the timestamp of last update of the default language's content."},"url":{"type":"string","description":"The URL of the collection. For multilingual help centers, this will be the URL of the collection for the default language."},"workspace_id":{"type":"string","description":"The id of the workspace which the collection belongs to."}},"inputProperties":{"description":{"type":"string","description":"The description of the collection. For multilingual collections, this will be the description of the default language's content."},"help_center_id":{"type":"integer","description":"The id of the help center where the collection will be created. If `null` then it will be created in the default help center."},"name":{"type":"string","description":"The name of the collection. For multilingual collections, this will be the name of the default language's content."},"parent_id":{"type":"string","description":"The id of the parent collection. If `null` then it will be created as the first level collection."},"translated_content":{"type":"string"}},"requiredInputs":["name"]},"intercom:internalarticles:InternalArticles":{"properties":{"author_id":{"type":"integer","description":"The id of the author of the article."},"body":{"type":"string","description":"The content of the article."},"owner_id":{"type":"integer","description":"The id of the owner of the article."},"title":{"type":"string","description":"The title of the article."}},"inputProperties":{"author_id":{"type":"integer","description":"The id of the author of the article."},"body":{"type":"string","description":"The content of the article."},"owner_id":{"type":"integer","description":"The id of the owner of the article."},"title":{"type":"string","description":"The title of the article."}},"requiredInputs":["title","owner_id","author_id"]},"intercom:news:NewsNewsItems":{"properties":{"body":{"type":"string","description":"The news item body, which may contain HTML."},"cover_image_url":{"type":"string","description":"URL of the image used as cover. Must have .jpg or .png extension."},"created_at":{"type":"integer","description":"Timestamp for when the news item was created."},"deliver_silently":{"type":"boolean","description":"When set to `true`, the news item will appear in the messenger newsfeed without showing a notification badge."},"labels":{"type":"array","items":{"type":"string"},"description":"Label names displayed to users to categorize the news item."},"newsfeed_assignments":{"type":"array","items":{"$ref":"#/types/intercom:index:NewsfeedAssignment"},"description":"A list of newsfeed_assignments to assign to the specified newsfeed."},"reactions":{"type":"array","items":{"type":"string"},"description":"Ordered list of emoji reactions to the news item. When empty, reactions are disabled."},"sender_id":{"type":"integer","description":"The id of the sender of the news item. Must be a teammate on the workspace."},"state":{"type":"string","description":"News items will not be visible to your users in the assigned newsfeeds until they are set live."},"title":{"type":"string","description":"The title of the news item."},"type":{"type":"string","description":"The type of object."},"updated_at":{"type":"integer","description":"Timestamp for when the news item was last updated."},"workspace_id":{"type":"string","description":"The id of the workspace which the news item belongs to."}},"inputProperties":{"body":{"type":"string","description":"The news item body, which may contain HTML."},"deliver_silently":{"type":"boolean","description":"When set to `true`, the news item will appear in the messenger newsfeed without showing a notification badge."},"labels":{"type":"array","items":{"type":"string"},"description":"Label names displayed to users to categorize the news item."},"newsfeed_assignments":{"type":"array","items":{"$ref":"#/types/intercom:index:NewsfeedAssignment"},"description":"A list of newsfeed_assignments to assign to the specified newsfeed."},"reactions":{"type":"array","items":{"type":"string"},"description":"Ordered list of emoji reactions to the news item. When empty, reactions are disabled."},"sender_id":{"type":"integer","description":"The id of the sender of the news item. Must be a teammate on the workspace."},"state":{"type":"string","description":"News items will not be visible to your users in the assigned newsfeeds until they are set live."},"title":{"type":"string","description":"The title of the news item."}},"requiredInputs":["title","sender_id"]},"intercom:subscriptiontypes:ContactsSubscriptions":{"properties":{"consent_type":{"type":"string","description":"The consent_type of a subscription, opt_out or opt_in."},"contact_id":{"type":"string"},"content_types":{"type":"array","items":{"type":"string"},"description":"The message types that this subscription supports - can contain `email` or `sms_message`."},"default_translation":{"$ref":"#/types/intercom:index:Translation"},"state":{"type":"string","description":"The state of the subscription type."},"translations":{"type":"array","items":{"$ref":"#/types/intercom:index:Translation"},"description":"An array of translations objects with the localised version of the subscription type in each available locale within your translation settings."},"type":{"type":"string","description":"The type of the object - subscription"}},"inputProperties":{"consent_type":{"type":"string","description":"The consent_type of a subscription, opt_out or opt_in."},"contact_id":{"type":"string"}},"requiredInputs":["consent_type","contact_id"]},"intercom:tags:ContactsTags":{"properties":{"applied_at":{"type":"integer","description":"The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"applied_by":{"type":"object","description":"The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"contact_id":{"type":"string"},"name":{"type":"string","description":"The name of the tag"},"type":{"type":"string","description":"value is \"tag\""}},"inputProperties":{"contact_id":{"type":"string"}},"requiredInputs":["contact_id"]},"intercom:tags:ConversationsTags":{"properties":{"admin_id":{"type":"string","description":"The unique identifier for the admin which is given by Intercom."},"applied_at":{"type":"integer","description":"The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"applied_by":{"type":"object","description":"The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"conversation_id":{"type":"string"},"name":{"type":"string","description":"The name of the tag"},"type":{"type":"string","description":"value is \"tag\""}},"inputProperties":{"admin_id":{"type":"string","description":"The unique identifier for the admin which is given by Intercom."},"conversation_id":{"type":"string"}},"requiredInputs":["admin_id","conversation_id"]},"intercom:tags:Tags":{"properties":{"name":{"type":"string","description":"The name of the tag"},"type":{"type":"string","description":"value is \"tag\""}}},"intercom:tags:TicketsTags":{"properties":{"admin_id":{"type":"string","description":"The unique identifier for the admin which is given by Intercom."},"applied_at":{"type":"integer","description":"The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"applied_by":{"type":"object","description":"The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."},"name":{"type":"string","description":"The name of the tag"},"ticket_id":{"type":"string"},"type":{"type":"string","description":"value is \"tag\""}},"inputProperties":{"admin_id":{"type":"string","description":"The unique identifier for the admin which is given by Intercom."},"ticket_id":{"type":"string"}},"requiredInputs":["admin_id","ticket_id"]},"intercom:tickets:Tickets":{"properties":{"admin_assignee_id":{"type":"string","description":"The id representing the admin assigned to the ticket."},"category":{"type":"string","description":"Category of the Ticket."},"contacts":{"$ref":"#/types/intercom:index:TicketContacts"},"created_at":{"type":"integer","description":"The time the ticket was created as a UTC Unix timestamp."},"is_shared":{"type":"boolean","description":"Whether or not the ticket is shared with the customer."},"linked_objects":{"$ref":"#/types/intercom:index:LinkedObjectList"},"open":{"type":"boolean","description":"Whether or not the ticket is open. If false, the ticket is closed."},"skip_notifications":{"type":"boolean","description":"Option to disable notifications when a Ticket is created."},"snoozed_until":{"type":"integer","description":"The time the ticket will be snoozed until as a UTC Unix timestamp. If null, the ticket is not currently snoozed."},"team_assignee_id":{"type":"string","description":"The id representing the team assigned to the ticket."},"ticket_attributes":{"$ref":"#/types/intercom:index:TicketCustomAttributes"},"ticket_id":{"type":"string","description":"The ID of the Ticket used in the Intercom Inbox and Messenger. Do not use ticket_id for API queries."},"ticket_parts":{"$ref":"#/types/intercom:index:TicketParts"},"ticket_state":{"$ref":"#/types/intercom:index:TicketState"},"ticket_type":{"$ref":"#/types/intercom:index:TicketType"},"type":{"type":"string","description":"Always ticket"},"updated_at":{"type":"integer","description":"The last time the ticket was updated as a UTC Unix timestamp."}},"inputProperties":{"skip_notifications":{"type":"boolean","description":"Option to disable notifications when a Ticket is created."}}},"intercom:tickettypes:TicketTypes":{"properties":{"archived":{"type":"boolean","description":"Whether the ticket type is archived or not."},"category":{"type":"string","description":"Category of the Ticket Type."},"created_at":{"type":"integer","description":"The date and time the ticket type was created."},"description":{"type":"string","description":"The description of the ticket type."},"icon":{"type":"string","description":"The icon of the ticket type."},"is_internal":{"type":"boolean","description":"Whether the tickets associated with this ticket type are intended for internal use only or will be shared with customers. This is currently a limited attribute."},"name":{"type":"string","description":"The name of the ticket type."},"ticket_states":{"type":"object","description":"A list of ticket states associated with a given ticket type."},"ticket_type_attributes":{"$ref":"#/types/intercom:index:TicketTypeAttributeList"},"type":{"type":"string","description":"String representing the object's type. Always has the value `ticket_type`."},"updated_at":{"type":"integer","description":"The date and time the ticket type was last updated."},"workspace_id":{"type":"string","description":"The id of the workspace that the ticket type belongs to."}},"inputProperties":{"category":{"type":"string","description":"Category of the Ticket Type."},"description":{"type":"string","description":"The description of the ticket type."},"icon":{"type":"string","description":"The icon of the ticket type."},"is_internal":{"type":"boolean","description":"Whether the tickets associated with this ticket type are intended for internal use only or will be shared with customers. This is currently a limited attribute."},"name":{"type":"string","description":"The name of the ticket type."}},"requiredInputs":["name"]}}}
+{
+  "name": "intercom",
+  "version": "0.1.0",
+  "config": {
+    "variables": {
+      "baseUrl": {
+        "type": "string",
+        "description": "Base URL for the API (overrides the spec server URL)."
+      },
+      "bearerToken": {
+        "type": "string",
+        "description": "Bearer token for the Authorization header.",
+        "secret": true
+      }
+    }
+  },
+  "types": {
+    "intercom:index:ArticleTranslatedContent": {
+      "description": "The Translated Content of an Article. The keys are the locale codes and the values are the translated content of the article.",
+      "properties": {
+        "ar": {
+          "type": "string"
+        },
+        "bg": {
+          "type": "string"
+        },
+        "bs": {
+          "type": "string"
+        },
+        "ca": {
+          "type": "string"
+        },
+        "cs": {
+          "type": "string"
+        },
+        "da": {
+          "type": "string"
+        },
+        "de": {
+          "type": "string"
+        },
+        "el": {
+          "type": "string"
+        },
+        "en": {
+          "type": "string"
+        },
+        "es": {
+          "type": "string"
+        },
+        "et": {
+          "type": "string"
+        },
+        "fi": {
+          "type": "string"
+        },
+        "fr": {
+          "type": "string"
+        },
+        "he": {
+          "type": "string"
+        },
+        "hr": {
+          "type": "string"
+        },
+        "hu": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "it": {
+          "type": "string"
+        },
+        "ja": {
+          "type": "string"
+        },
+        "ko": {
+          "type": "string"
+        },
+        "lt": {
+          "type": "string"
+        },
+        "lv": {
+          "type": "string"
+        },
+        "mn": {
+          "type": "string"
+        },
+        "nb": {
+          "type": "string"
+        },
+        "nl": {
+          "type": "string"
+        },
+        "pl": {
+          "type": "string"
+        },
+        "pt": {
+          "type": "string"
+        },
+        "pt-BR": {
+          "type": "string"
+        },
+        "ro": {
+          "type": "string"
+        },
+        "ru": {
+          "type": "string"
+        },
+        "sl": {
+          "type": "string"
+        },
+        "sr": {
+          "type": "string"
+        },
+        "sv": {
+          "type": "string"
+        },
+        "tr": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of object - article_translated_content."
+        },
+        "vi": {
+          "type": "string"
+        },
+        "zh-CN": {
+          "type": "string"
+        },
+        "zh-TW": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ContactReference": {
+      "description": "reference to contact object",
+      "properties": {
+        "external_id": {
+          "type": "string",
+          "description": "The unique identifier for the contact which is provided by the Client."
+        },
+        "id": {
+          "type": "string",
+          "description": "The unique identifier for the contact which is given by Intercom."
+        },
+        "type": {
+          "type": "string",
+          "description": "always contact"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationContacts": {
+      "description": "The list of contacts (users or leads) involved in this conversation. This will only contain one customer unless more were added via the group conversation feature.",
+      "properties": {
+        "contacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:ContactReference"
+          },
+          "description": "The list of contacts (users or leads) involved in this conversation. This will only contain one customer unless more were added via the group conversation feature."
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationFirstContactReply": {
+      "description": "An object containing information on the first users message. For a contact initiated message this will represent the users original message.",
+      "properties": {
+        "created_at": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationPart": {
+      "description": "A Conversation Part represents a message in the conversation.",
+      "properties": {
+        "app_package_code": {
+          "type": "string",
+          "description": "The app package code if this part was created via API. null if the part was not created via API."
+        },
+        "assigned_to": {
+          "type": "string"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:PartAttachment"
+          },
+          "description": "A list of attachments for the part."
+        },
+        "author": {
+          "$ref": "#/types/intercom:index:ConversationPartAuthor"
+        },
+        "body": {
+          "type": "string",
+          "description": "The message body, which may contain HTML. For Twitter, this will show a generic message regarding why the body is obscured. In webhook payloads for API version 2.15+, this field returns plain text."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the conversation part was created."
+        },
+        "email_message_metadata": {
+          "type": "string"
+        },
+        "event_details": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string",
+          "description": "The external id of the conversation part"
+        },
+        "id": {
+          "type": "string",
+          "description": "The id representing the conversation part."
+        },
+        "metadata": {
+          "type": "string"
+        },
+        "notified_at": {
+          "type": "integer",
+          "description": "The time the user was notified with the conversation part."
+        },
+        "part_type": {
+          "type": "string",
+          "description": "The type of conversation part."
+        },
+        "redacted": {
+          "type": "boolean",
+          "description": "Whether or not the conversation part has been redacted."
+        },
+        "state": {
+          "type": "string",
+          "description": "Indicates the current state of conversation when the conversation part was created."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:TagBasic"
+          },
+          "description": "A list of tags objects associated with the conversation part."
+        },
+        "type": {
+          "type": "string",
+          "description": "Always conversation_part"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The last time the conversation part was updated."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationPartAuthor": {
+      "description": "The object who initiated the conversation, which can be a Contact, Admin or Team. Bots and campaigns send messages on behalf of Admins or Teams. For Twitter, this will be blank.",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "The email of the author"
+        },
+        "from_ai_agent": {
+          "type": "boolean",
+          "description": "If this conversation part was sent by the AI Agent"
+        },
+        "id": {
+          "type": "string",
+          "description": "The id of the author"
+        },
+        "is_ai_answer": {
+          "type": "boolean",
+          "description": "If this conversation part body was generated by the AI Agent"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the author"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the author"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationParts": {
+      "description": "A list of Conversation Part objects for each part message in the conversation. This is only returned when Retrieving a Conversation, and ignored when Listing all Conversations. There is a limit of 500 parts.",
+      "properties": {
+        "conversation_parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:ConversationPart"
+          },
+          "description": "A list of Conversation Part objects for each part message in the conversation. This is only returned when Retrieving a Conversation, and ignored when Listing all Conversations. There is a limit of 500 parts."
+        },
+        "total_count": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationRating": {
+      "description": "The Conversation Rating object which contains information on the rating and/or remark added by a Contact and the Admin assigned to the conversation.",
+      "properties": {
+        "contact": {
+          "$ref": "#/types/intercom:index:ContactReference"
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the rating was requested in the conversation being rated."
+        },
+        "rating": {
+          "type": "integer",
+          "description": "The rating, between 1 and 5, for the conversation."
+        },
+        "remark": {
+          "type": "string",
+          "description": "An optional field to add a remark to correspond to the number rating"
+        },
+        "teammate": {
+          "$ref": "#/types/intercom:index:Reference"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The time the rating was last updated."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationResponseTime": {
+      "description": "Details of first response time of assigned team in seconds.",
+      "properties": {
+        "response_time": {
+          "type": "integer",
+          "description": "First response time of assigned team in seconds."
+        },
+        "team_id": {
+          "type": "integer",
+          "description": "Id of the assigned team."
+        },
+        "team_name": {
+          "type": "string",
+          "description": "Name of the assigned Team, null if team does not exist, Unassigned if no team is assigned."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationSource": {
+      "description": "The type of the conversation part that started this conversation. Can be Contact, Admin, Campaign, Automated or Operator initiated.",
+      "properties": {
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:PartAttachment"
+          },
+          "description": "A list of attachments for the part."
+        },
+        "author": {
+          "$ref": "#/types/intercom:index:ConversationPartAuthor"
+        },
+        "body": {
+          "type": "string",
+          "description": "The message body, which may contain HTML. For Twitter, this will show a generic message regarding why the body is obscured. In webhook payloads for API version 2.15+, this field returns plain text."
+        },
+        "delivered_as": {
+          "type": "string",
+          "description": "The conversation's initiation type. Possible values are customer_initiated, campaigns_initiated (legacy campaigns), operator_initiated (Custom bot), automated (Series and other outbounds with dynamic audience message) and admin_initiated (fixed audience message, ticket initiated by an admin, group email)."
+        },
+        "id": {
+          "type": "string",
+          "description": "The id representing the message."
+        },
+        "redacted": {
+          "type": "boolean",
+          "description": "Whether or not the source message has been redacted. Only applicable for contact initiated messages."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Optional. The message subject. For Twitter, this will show a generic message regarding why the subject is obscured. In webhook payloads for API version 2.15+, this field returns plain text."
+        },
+        "type": {
+          "type": "string",
+          "description": "This includes conversation, email, facebook, instagram, phone_call, phone_switch, push, sms, twitter and whatsapp."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL where the conversation was started. For Twitter, Email, and Bots, this will be blank."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationStatistics": {
+      "description": "A Statistics object containing all information required for reporting, with timestamps and calculated metrics.",
+      "properties": {
+        "adjusted_handling_time": {
+          "type": "integer",
+          "description": "Adjusted handling time for conversation in seconds. This is the active handling time excluding idle periods when teammates are not actively working on the conversation."
+        },
+        "assigned_team_first_response_time": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:ConversationResponseTime"
+          },
+          "description": "An array of conversation response time objects"
+        },
+        "assigned_team_first_response_time_in_office_hours": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:ConversationResponseTime"
+          },
+          "description": "An array of conversation response time objects within office hours"
+        },
+        "count_assignments": {
+          "type": "integer",
+          "description": "Number of assignments after first_contact_reply_at."
+        },
+        "count_conversation_parts": {
+          "type": "integer",
+          "description": "Total number of conversation parts."
+        },
+        "count_reopens": {
+          "type": "integer",
+          "description": "Number of reopens after first_contact_reply_at."
+        },
+        "first_admin_reply_at": {
+          "type": "integer",
+          "description": "Time of first admin reply after first_contact_reply_at."
+        },
+        "first_assignment_at": {
+          "type": "integer",
+          "description": "Time of first assignment after first_contact_reply_at."
+        },
+        "first_close_at": {
+          "type": "integer",
+          "description": "Time of first close after first_contact_reply_at."
+        },
+        "first_contact_reply_at": {
+          "type": "integer",
+          "description": "Time of first text conversation part from a contact."
+        },
+        "handling_time": {
+          "type": "integer",
+          "description": "Time from conversation assignment to conversation close in seconds."
+        },
+        "last_admin_reply_at": {
+          "type": "integer",
+          "description": "Time of the last conversation part from an admin."
+        },
+        "last_assignment_admin_reply_at": {
+          "type": "integer",
+          "description": "Time of first admin reply since most recent assignment."
+        },
+        "last_assignment_at": {
+          "type": "integer",
+          "description": "Time of last assignment after first_contact_reply_at."
+        },
+        "last_close_at": {
+          "type": "integer",
+          "description": "Time of the last conversation close."
+        },
+        "last_closed_by_id": {
+          "type": "string",
+          "description": "The last admin who closed the conversation. Returns a reference to an Admin object."
+        },
+        "last_contact_reply_at": {
+          "type": "integer",
+          "description": "Time of the last conversation part from a contact."
+        },
+        "median_time_to_reply": {
+          "type": "integer",
+          "description": "Median based on all admin replies after a contact reply. Subtracts out of business hours. In seconds."
+        },
+        "time_to_admin_reply": {
+          "type": "integer",
+          "description": "Duration until first admin reply. Subtracts out of business hours. In seconds."
+        },
+        "time_to_assignment": {
+          "type": "integer",
+          "description": "Duration until last assignment before first admin reply. In seconds."
+        },
+        "time_to_first_close": {
+          "type": "integer",
+          "description": "Duration until conversation was closed first time. Subtracts out of business hours. In seconds."
+        },
+        "time_to_last_close": {
+          "type": "integer",
+          "description": "Duration until conversation was closed last time. Subtracts out of business hours. In seconds."
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:ConversationTeammates": {
+      "description": "The list of teammates who participated in the conversation (wrote at least one conversation part).",
+      "properties": {
+        "teammates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:Reference"
+          },
+          "description": "The list of teammates who participated in the conversation (wrote at least one conversation part)."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the object - `admin.list`."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:CustomAttributes": {
+      "description": "An object containing the different custom attributes associated to the conversation as key-value pairs. For relationship attributes the value will be a list of custom object instance models. System-defined attributes such as \"CX Score rating\" and \"CX Score explanation\" may also be included.",
+      "type": "object"
+    },
+    "intercom:index:LinkedObject": {
+      "description": "A linked conversation or ticket.",
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Category of the Linked Ticket Object."
+        },
+        "id": {
+          "type": "string",
+          "description": "The ID of the linked object"
+        },
+        "type": {
+          "type": "string",
+          "description": "ticket or conversation"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:LinkedObjectList": {
+      "description": "An object containing metadata about linked conversations and linked tickets. Up to 1000 can be returned.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:LinkedObject"
+          },
+          "description": "An array containing the linked conversations and linked tickets."
+        },
+        "has_more": {
+          "type": "boolean",
+          "description": "Whether or not there are more linked objects than returned."
+        },
+        "total_count": {
+          "type": "integer",
+          "description": "The total number of linked objects."
+        },
+        "type": {
+          "type": "string",
+          "description": "Always list."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:NewsfeedAssignment": {
+      "description": "Assigns a news item to a newsfeed.",
+      "properties": {
+        "newsfeed_id": {
+          "type": "integer",
+          "description": "The unique identifier for the newsfeed which is given by Intercom. Publish dates cannot be in the future, to schedule news items use the dedicated feature in app (see this article)."
+        },
+        "published_at": {
+          "type": "integer",
+          "description": "Publish date of the news item on the newsfeed, use this field if you want to set a publish date in the past (e.g. when importing existing news items). On write, this field will be ignored if the news item state is \"draft\"."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:PartAttachment": {
+      "description": "The file attached to a part",
+      "properties": {
+        "content_type": {
+          "type": "string",
+          "description": "The content type of the attachment"
+        },
+        "filesize": {
+          "type": "integer",
+          "description": "The size of the attachment"
+        },
+        "height": {
+          "type": "integer",
+          "description": "The height of the attachment"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the attachment"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of attachment"
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the attachment"
+        },
+        "width": {
+          "type": "integer",
+          "description": "The width of the attachment"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:Reference": {
+      "description": "reference to another object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:SlaApplied": {
+      "description": "The SLA Applied object contains the details for which SLA has been applied to this conversation.\nImportant: if there are any canceled sla_events for the conversation - meaning an SLA has been manually removed from a conversation, the sla_status will always be returned as null.\n",
+      "properties": {
+        "sla_name": {
+          "type": "string",
+          "description": "The name of the SLA as given by the teammate when it was created."
+        },
+        "sla_status": {
+          "type": "string",
+          "description": "SLA statuses:\n            - `hit`: If there’s at least one hit event in the underlying sla_events table, and no “missed” or “canceled” events for the conversation.\n            - `missed`: If there are any missed sla_events for the conversation and no canceled events. If there’s even a single missed sla event, the status will always be missed. A missed status is not applied when the SLA expires, only the next time a teammate replies.\n            - `active`: An SLA has been applied to a conversation, but has not yet been fulfilled. SLA status is active only if there are no “hit, “missed”, or “canceled” events."
+        },
+        "type": {
+          "type": "string",
+          "description": "object type"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:Tag": {
+      "description": "A tag allows you to label your contacts, companies, and conversations and list them using that tag.",
+      "properties": {
+        "applied_at": {
+          "type": "integer",
+          "description": "The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "applied_by": {
+          "type": "object",
+          "description": "The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "id": {
+          "type": "string",
+          "description": "The id of the tag"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the tag"
+        },
+        "type": {
+          "type": "string",
+          "description": "value is \"tag\""
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TagBasic": {
+      "description": "A tag allows you to label your contacts, companies, and conversations and list them using that tag.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the tag"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the tag"
+        },
+        "type": {
+          "type": "string",
+          "description": "value is \"tag\""
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:Tags": {
+      "description": "A list of tags objects associated with a conversation",
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:Tag"
+          },
+          "description": "A list of tags objects associated with the conversation."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the object"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketContacts": {
+      "description": "The list of contacts affected by a ticket.",
+      "properties": {
+        "contacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:ContactReference"
+          },
+          "description": "The list of contacts affected by this ticket."
+        },
+        "type": {
+          "type": "string",
+          "description": "always contact.list"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketCustomAttributes": {
+      "description": "An object containing the different attributes associated to the ticket as key-value pairs. For the default title and description attributes, the keys are `_default_title_` and `_default_description_`.",
+      "type": "object"
+    },
+    "intercom:index:TicketPart": {
+      "description": "A Ticket Part represents a message in the ticket.",
+      "properties": {
+        "app_package_code": {
+          "type": "string",
+          "description": "The app package code if this part was created via API. Note this field won't show if the part was not created via API."
+        },
+        "assigned_to": {
+          "type": "string"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:PartAttachment"
+          },
+          "description": "A list of attachments for the part."
+        },
+        "author": {
+          "$ref": "#/types/intercom:index:TicketPartAuthor"
+        },
+        "body": {
+          "type": "string",
+          "description": "The message body, which may contain HTML."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the ticket part was created."
+        },
+        "external_id": {
+          "type": "string",
+          "description": "The external id of the ticket part"
+        },
+        "id": {
+          "type": "string",
+          "description": "The id representing the ticket part."
+        },
+        "part_type": {
+          "type": "string",
+          "description": "The type of ticket part."
+        },
+        "previous_ticket_state": {
+          "type": "string",
+          "description": "The previous state of the ticket."
+        },
+        "redacted": {
+          "type": "boolean",
+          "description": "Whether or not the ticket part has been redacted."
+        },
+        "ticket_state": {
+          "type": "string",
+          "description": "The state of the ticket."
+        },
+        "type": {
+          "type": "string",
+          "description": "Always ticket_part"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The last time the ticket part was updated."
+        },
+        "updated_attribute_data": {
+          "type": "object",
+          "description": "The updated attribute data of the ticket part. Only present for attribute update parts."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketPartAuthor": {
+      "description": "The author that wrote or triggered the part. Can be a bot, admin, team or user.",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "The email of the author"
+        },
+        "id": {
+          "type": "string",
+          "description": "The id of the author"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the author"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the author"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketParts": {
+      "description": "A list of Ticket Part objects for each note and event in the ticket. There is a limit of 500 parts.",
+      "properties": {
+        "ticket_parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:TicketPart"
+          },
+          "description": "A list of Ticket Part objects for each ticket. There is a limit of 500 parts."
+        },
+        "total_count": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketState": {
+      "description": "A ticket state, used to define the state of a ticket.",
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "The category of the ticket state"
+        },
+        "external_label": {
+          "type": "string",
+          "description": "The state the ticket is currently in, in a human readable form - visible to customers, in the messenger, email and tickets portal."
+        },
+        "id": {
+          "type": "string",
+          "description": "The id of the ticket state"
+        },
+        "internal_label": {
+          "type": "string",
+          "description": "The state the ticket is currently in, in a human readable form - visible in Intercom"
+        },
+        "type": {
+          "type": "string",
+          "description": "String representing the object's type. Always has the value `ticket_state`."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketType": {
+      "description": "A ticket type, used to define the data fields to be captured in a ticket.",
+      "properties": {
+        "archived": {
+          "type": "boolean",
+          "description": "Whether the ticket type is archived or not."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the Ticket Type."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The date and time the ticket type was created."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the ticket type"
+        },
+        "icon": {
+          "type": "string",
+          "description": "The icon of the ticket type"
+        },
+        "id": {
+          "type": "string",
+          "description": "The id representing the ticket type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the ticket type"
+        },
+        "ticket_states": {
+          "type": "object",
+          "description": "A list of ticket states associated with a given ticket type."
+        },
+        "ticket_type_attributes": {
+          "$ref": "#/types/intercom:index:TicketTypeAttributeList"
+        },
+        "type": {
+          "type": "string",
+          "description": "String representing the object's type. Always has the value `ticket_type`."
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The date and time the ticket type was last updated."
+        },
+        "workspace_id": {
+          "type": "string",
+          "description": "The id of the workspace that the ticket type belongs to."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketTypeAttribute": {
+      "description": "Ticket type attribute, used to define each data field to be captured in a ticket.",
+      "properties": {
+        "archived": {
+          "type": "boolean",
+          "description": "Whether the ticket type attribute is archived or not."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The date and time the ticket type attribute was created."
+        },
+        "data_type": {
+          "type": "string",
+          "description": "The type of the data attribute (allowed values: \"string list integer decimal boolean datetime files\")"
+        },
+        "default": {
+          "type": "boolean",
+          "description": "Whether the attribute is built in or not."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the ticket type attribute"
+        },
+        "id": {
+          "type": "string",
+          "description": "The id representing the ticket type attribute."
+        },
+        "input_options": {
+          "type": "object",
+          "description": "Input options for the attribute"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the ticket type attribute"
+        },
+        "order": {
+          "type": "integer",
+          "description": "The order of the attribute against other attributes"
+        },
+        "required_to_create": {
+          "type": "boolean",
+          "description": "Whether the attribute is required or not for teammates."
+        },
+        "required_to_create_for_contacts": {
+          "type": "boolean",
+          "description": "Whether the attribute is required or not for contacts."
+        },
+        "ticket_type_id": {
+          "type": "integer",
+          "description": "The id of the ticket type that the attribute belongs to."
+        },
+        "type": {
+          "type": "string",
+          "description": "String representing the object's type. Always has the value `ticket_type_attribute`."
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The date and time the ticket type attribute was last updated."
+        },
+        "visible_on_create": {
+          "type": "boolean",
+          "description": "Whether the attribute is visible or not to teammates."
+        },
+        "visible_to_contacts": {
+          "type": "boolean",
+          "description": "Whether the attribute is visible or not to contacts."
+        },
+        "workspace_id": {
+          "type": "string",
+          "description": "The id of the workspace that the ticket type attribute belongs to."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:TicketTypeAttributeList": {
+      "description": "A list of attributes associated with a given ticket type.",
+      "properties": {
+        "ticket_type_attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:TicketTypeAttribute"
+          },
+          "description": "A list of ticket type attributes associated with a given ticket type."
+        },
+        "type": {
+          "type": "string",
+          "description": "String representing the object's type. Always has the value `ticket_type_attributes.list`."
+        }
+      },
+      "type": "object"
+    },
+    "intercom:index:Translation": {
+      "description": "A translation object contains the localised details of a subscription type.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "The localised description of the subscription type."
+        },
+        "locale": {
+          "type": "string",
+          "description": "The two character identifier for the language of the translation object."
+        },
+        "name": {
+          "type": "string",
+          "description": "The localised name of the subscription type."
+        }
+      },
+      "type": "object"
+    }
+  },
+  "provider": {
+    "inputProperties": {
+      "baseUrl": {
+        "type": "string",
+        "description": "Base URL for the API (overrides the spec server URL)."
+      },
+      "bearerToken": {
+        "type": "string",
+        "description": "Bearer token for the Authorization header.",
+        "secret": true
+      }
+    }
+  },
+  "resources": {
+    "intercom:aicontent:AiContentImportSources": {
+      "properties": {
+        "created_at": {
+          "type": "integer",
+          "description": "The time when the content import source was created."
+        },
+        "last_synced_at": {
+          "type": "integer",
+          "description": "The time when the content import source was last synced."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the content import source."
+        },
+        "sync_behavior": {
+          "type": "string",
+          "description": "If you intend to create or update External Pages via the API, this should be set to `api`."
+        },
+        "type": {
+          "type": "string",
+          "description": "Always external_page"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The time when the content import source was last updated."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the content import source."
+        }
+      },
+      "inputProperties": {
+        "status": {
+          "type": "string",
+          "description": "The status of the content import source."
+        },
+        "sync_behavior": {
+          "type": "string",
+          "description": "If you intend to create or update External Pages via the API, this should be set to `api`."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the content import source."
+        }
+      },
+      "requiredInputs": [
+        "sync_behavior",
+        "url"
+      ]
+    },
+    "intercom:aicontent:AiExternalPages": {
+      "properties": {
+        "ai_agent_availability": {
+          "type": "boolean",
+          "description": "Whether the external page should be used to answer questions by AI Agent. Will not default when updating an existing external page."
+        },
+        "ai_copilot_availability": {
+          "type": "boolean",
+          "description": "Whether the external page should be used to answer questions by AI Copilot. Will not default when updating an existing external page."
+        },
+        "ai_sales_agent_availability": {
+          "type": "boolean",
+          "description": "Whether the external page should be used to answer questions by AI Sales Agent."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time when the external page was created."
+        },
+        "external_id": {
+          "type": "string",
+          "description": "The identifier for the external page which was given by the source. Must be unique for the source."
+        },
+        "fin_availability": {
+          "type": "boolean",
+          "description": "Deprecated. Use ai_agent_availability and ai_copilot_availability instead."
+        },
+        "html": {
+          "type": "string",
+          "description": "The body of the external page in HTML."
+        },
+        "last_ingested_at": {
+          "type": "integer",
+          "description": "The time when the external page was last ingested."
+        },
+        "locale": {
+          "type": "string",
+          "description": "Always en"
+        },
+        "source_id": {
+          "type": "integer",
+          "description": "The unique identifier for the source of the external page which was given by Intercom. Every external page must be associated with a Content Import Source which represents the place it comes from and from which it inherits a default audience (configured in the UI). For a new source, make a POST request to the Content Import Source endpoint and an ID for the source will be returned in the response."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the external page."
+        },
+        "type": {
+          "type": "string",
+          "description": "Always external_page"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The time when the external page was last updated."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the external page. This will be used by Fin to link end users to the page it based its answer on. When a URL is not present, Fin will not reference the source."
+        }
+      },
+      "inputProperties": {
+        "ai_agent_availability": {
+          "type": "boolean",
+          "description": "Whether the external page should be used to answer questions by AI Agent. Will not default when updating an existing external page."
+        },
+        "ai_copilot_availability": {
+          "type": "boolean",
+          "description": "Whether the external page should be used to answer questions by AI Copilot. Will not default when updating an existing external page."
+        },
+        "external_id": {
+          "type": "string",
+          "description": "The identifier for the external page which was given by the source. Must be unique for the source."
+        },
+        "html": {
+          "type": "string",
+          "description": "The body of the external page in HTML."
+        },
+        "locale": {
+          "type": "string",
+          "description": "Always en"
+        },
+        "source_id": {
+          "type": "integer",
+          "description": "The unique identifier for the source of the external page which was given by Intercom. Every external page must be associated with a Content Import Source which represents the place it comes from and from which it inherits a default audience (configured in the UI). For a new source, make a POST request to the Content Import Source endpoint and an ID for the source will be returned in the response."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the external page."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the external page. This will be used by Fin to link end users to the page it based its answer on. When a URL is not present, Fin will not reference the source."
+        }
+      },
+      "requiredInputs": [
+        "title",
+        "html",
+        "locale",
+        "source_id",
+        "external_id"
+      ]
+    },
+    "intercom:articles:Articles": {
+      "properties": {
+        "author_id": {
+          "type": "integer",
+          "description": "The id of the author of the article. For multilingual articles, this will be the id of the author of the default language's content. Must be a teammate on the help center's workspace."
+        },
+        "body": {
+          "type": "string",
+          "description": "The content of the article. For multilingual articles, this will be the body of the default language's content."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the article. For multilingual articles, this will be the description of the default language's content."
+        },
+        "parent_id": {
+          "type": "integer",
+          "description": "The id of the article's parent collection or section. An article without this field stands alone."
+        },
+        "parent_type": {
+          "type": "string",
+          "description": "The type of parent, which can either be a `collection` or `section`."
+        },
+        "state": {
+          "type": "string",
+          "description": "Whether the article will be `published` or will be a `draft`. Defaults to draft. For multilingual articles, this will be the state of the default language's content."
+        },
+        "statistics": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the article.For multilingual articles, this will be the title of the default language's content."
+        },
+        "translated_content": {
+          "$ref": "#/types/intercom:index:ArticleTranslatedContent"
+        }
+      },
+      "inputProperties": {
+        "author_id": {
+          "type": "integer",
+          "description": "The id of the author of the article. For multilingual articles, this will be the id of the author of the default language's content. Must be a teammate on the help center's workspace."
+        },
+        "body": {
+          "type": "string",
+          "description": "The content of the article. For multilingual articles, this will be the body of the default language's content."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the article. For multilingual articles, this will be the description of the default language's content."
+        },
+        "parent_id": {
+          "type": "integer",
+          "description": "The id of the article's parent collection or section. An article without this field stands alone."
+        },
+        "parent_type": {
+          "type": "string",
+          "description": "The type of parent, which can either be a `collection` or `section`."
+        },
+        "state": {
+          "type": "string",
+          "description": "Whether the article will be `published` or will be a `draft`. Defaults to draft. For multilingual articles, this will be the state of the default language's content."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the article.For multilingual articles, this will be the title of the default language's content."
+        },
+        "translated_content": {
+          "$ref": "#/types/intercom:index:ArticleTranslatedContent"
+        }
+      },
+      "requiredInputs": [
+        "title",
+        "author_id"
+      ]
+    },
+    "intercom:companies:Companies": {
+      "properties": {
+        "app_id": {
+          "type": "string",
+          "description": "The Intercom defined code of the workspace the company is associated to."
+        },
+        "company_id": {
+          "type": "string",
+          "description": "The company id you have defined for the company. Can't be updated"
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the company was added in Intercom."
+        },
+        "custom_attributes": {
+          "type": "object",
+          "description": "A hash of key/value pairs containing any other data about the company you want Intercom to store."
+        },
+        "industry": {
+          "type": "string",
+          "description": "The industry that this company operates in."
+        },
+        "last_request_at": {
+          "type": "integer",
+          "description": "The time the company last recorded making a request."
+        },
+        "monthly_spend": {
+          "type": "integer",
+          "description": "How much revenue the company generates for your business. Note that this will truncate floats. i.e. it only allow for whole integers, 155.98 will be truncated to 155. Note that this has an upper limit of 2**31-1 or 2147483647.."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the Company"
+        },
+        "plan": {
+          "type": "string",
+          "description": "The name of the plan you have associated with the company."
+        },
+        "remote_created_at": {
+          "type": "integer",
+          "description": "The time the company was created by you."
+        },
+        "segments": {
+          "type": "object",
+          "description": "The list of segments associated with the company"
+        },
+        "session_count": {
+          "type": "integer",
+          "description": "How many sessions the company has recorded."
+        },
+        "size": {
+          "type": "integer",
+          "description": "The number of employees in this company."
+        },
+        "tags": {
+          "type": "object",
+          "description": "The list of tags associated with the company"
+        },
+        "type": {
+          "type": "string",
+          "description": "Value is `company`"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The last time the company was updated."
+        },
+        "user_count": {
+          "type": "integer",
+          "description": "The number of users in the company."
+        },
+        "website": {
+          "type": "string",
+          "description": "The URL for this company's website. Please note that the value specified here is not validated. Accepts any string."
+        }
+      },
+      "inputProperties": {
+        "company_id": {
+          "type": "string",
+          "description": "The company id you have defined for the company. Can't be updated"
+        },
+        "custom_attributes": {
+          "type": "object",
+          "description": "A hash of key/value pairs containing any other data about the company you want Intercom to store."
+        },
+        "industry": {
+          "type": "string",
+          "description": "The industry that this company operates in."
+        },
+        "monthly_spend": {
+          "type": "integer",
+          "description": "How much revenue the company generates for your business. Note that this will truncate floats. i.e. it only allow for whole integers, 155.98 will be truncated to 155. Note that this has an upper limit of 2**31-1 or 2147483647.."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the Company"
+        },
+        "plan": {
+          "type": "string",
+          "description": "The name of the plan you have associated with the company."
+        },
+        "remote_created_at": {
+          "type": "integer",
+          "description": "The time the company was created by you."
+        },
+        "size": {
+          "type": "integer",
+          "description": "The number of employees in this company."
+        },
+        "website": {
+          "type": "string",
+          "description": "The URL for this company's website. Please note that the value specified here is not validated. Accepts any string."
+        }
+      }
+    },
+    "intercom:companies:ContactsCompanies": {
+      "properties": {
+        "app_id": {
+          "type": "string",
+          "description": "The Intercom defined code of the workspace the company is associated to."
+        },
+        "company_id": {
+          "type": "string",
+          "description": "The company id you have defined for the company."
+        },
+        "contact_id": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the company was added in Intercom."
+        },
+        "custom_attributes": {
+          "type": "object",
+          "description": "The custom attributes you have set on the company."
+        },
+        "industry": {
+          "type": "string",
+          "description": "The industry that the company operates in."
+        },
+        "last_request_at": {
+          "type": "integer",
+          "description": "The time the company last recorded making a request."
+        },
+        "monthly_spend": {
+          "type": "integer",
+          "description": "How much revenue the company generates for your business."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the company."
+        },
+        "plan": {
+          "type": "object"
+        },
+        "remote_created_at": {
+          "type": "integer",
+          "description": "The time the company was created by you."
+        },
+        "segments": {
+          "type": "object",
+          "description": "The list of segments associated with the company"
+        },
+        "session_count": {
+          "type": "integer",
+          "description": "How many sessions the company has recorded."
+        },
+        "size": {
+          "type": "integer",
+          "description": "The number of employees in the company."
+        },
+        "tags": {
+          "type": "object",
+          "description": "The list of tags associated with the company"
+        },
+        "type": {
+          "type": "string",
+          "description": "Value is `company`"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The last time the company was updated."
+        },
+        "user_count": {
+          "type": "integer",
+          "description": "The number of users in the company."
+        },
+        "website": {
+          "type": "string",
+          "description": "The URL for the company website."
+        }
+      },
+      "inputProperties": {
+        "contact_id": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "contact_id"
+      ]
+    },
+    "intercom:contacts:Contacts": {
+      "properties": {
+        "enabled_push_messaging": {
+          "type": "boolean",
+          "description": "If the user has enabled push messaging."
+        }
+      }
+    },
+    "intercom:conversations:Conversations": {
+      "properties": {
+        "admin_assignee_id": {
+          "type": "integer",
+          "description": "The id of the admin assigned to the conversation. If it's not assigned to an admin it will return null."
+        },
+        "ai_agent": {
+          "type": "string"
+        },
+        "ai_agent_participated": {
+          "type": "boolean",
+          "description": "Indicates whether the AI Agent participated in the conversation."
+        },
+        "attachment_urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of image URLs that will be added as attachments. You can include up to 10 URLs."
+        },
+        "body": {
+          "type": "string",
+          "description": "The content of the message. HTML is not supported."
+        },
+        "company": {
+          "type": "string"
+        },
+        "contacts": {
+          "$ref": "#/types/intercom:index:ConversationContacts"
+        },
+        "conversation_parts": {
+          "$ref": "#/types/intercom:index:ConversationParts"
+        },
+        "conversation_rating": {
+          "$ref": "#/types/intercom:index:ConversationRating"
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the conversation was created as a UTC Unix timestamp. If not provided, the current time will be used. This field is only recommneded for migrating past conversations from another source into Intercom."
+        },
+        "custom_attributes": {
+          "$ref": "#/types/intercom:index:CustomAttributes"
+        },
+        "first_contact_reply": {
+          "$ref": "#/types/intercom:index:ConversationFirstContactReply"
+        },
+        "from": {
+          "type": "object"
+        },
+        "linked_objects": {
+          "$ref": "#/types/intercom:index:LinkedObjectList"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Indicates whether a conversation is open (true) or closed (false)."
+        },
+        "priority": {
+          "type": "string",
+          "description": "If marked as priority, it will return priority or else not_priority."
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Indicates whether a conversation has been read."
+        },
+        "sla_applied": {
+          "$ref": "#/types/intercom:index:SlaApplied"
+        },
+        "snoozed_until": {
+          "type": "integer",
+          "description": "If set this is the time in the future when this conversation will be marked as open. i.e. it will be in a snoozed state until this time. i.e. it will be in a snoozed state until this time."
+        },
+        "source": {
+          "$ref": "#/types/intercom:index:ConversationSource"
+        },
+        "state": {
+          "type": "string",
+          "description": "Can be set to \"open\", \"closed\" or \"snoozed\"."
+        },
+        "statistics": {
+          "$ref": "#/types/intercom:index:ConversationStatistics"
+        },
+        "subject": {
+          "type": "string",
+          "description": "The title of the email. Only applicable if the message type is email."
+        },
+        "tags": {
+          "$ref": "#/types/intercom:index:Tags"
+        },
+        "team_assignee_id": {
+          "type": "integer",
+          "description": "The id of the team assigned to the conversation. If it's not assigned to a team it will return null."
+        },
+        "teammates": {
+          "$ref": "#/types/intercom:index:ConversationTeammates"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title given to the conversation."
+        },
+        "type": {
+          "type": "string",
+          "description": "Always conversation."
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The last time the conversation was updated."
+        },
+        "waiting_since": {
+          "type": "integer",
+          "description": "The last time a Contact responded to an Admin. In other words, the time a customer started waiting for a response. Set to null if last reply is from an Admin."
+        }
+      },
+      "inputProperties": {
+        "attachment_urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of image URLs that will be added as attachments. You can include up to 10 URLs."
+        },
+        "body": {
+          "type": "string",
+          "description": "The content of the message. HTML is not supported."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the conversation was created as a UTC Unix timestamp. If not provided, the current time will be used. This field is only recommneded for migrating past conversations from another source into Intercom."
+        },
+        "from": {
+          "type": "object"
+        },
+        "subject": {
+          "type": "string",
+          "description": "The title of the email. Only applicable if the message type is email."
+        }
+      },
+      "requiredInputs": [
+        "from",
+        "body"
+      ]
+    },
+    "intercom:conversations:ConversationsCustomers": {
+      "properties": {
+        "admin_assignee_id": {
+          "type": "integer",
+          "description": "The id of the admin assigned to the conversation. If it's not assigned to an admin it will return null."
+        },
+        "admin_id": {
+          "type": "string",
+          "description": "The `id` of the admin who is adding the new participant."
+        },
+        "ai_agent": {
+          "type": "string"
+        },
+        "ai_agent_participated": {
+          "type": "boolean",
+          "description": "Indicates whether the AI Agent participated in the conversation."
+        },
+        "company": {
+          "type": "string"
+        },
+        "contacts": {
+          "$ref": "#/types/intercom:index:ConversationContacts"
+        },
+        "conversation_id": {
+          "type": "string"
+        },
+        "conversation_parts": {
+          "$ref": "#/types/intercom:index:ConversationParts"
+        },
+        "conversation_rating": {
+          "$ref": "#/types/intercom:index:ConversationRating"
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the conversation was created."
+        },
+        "custom_attributes": {
+          "$ref": "#/types/intercom:index:CustomAttributes"
+        },
+        "customer": {
+          "type": "object"
+        },
+        "first_contact_reply": {
+          "$ref": "#/types/intercom:index:ConversationFirstContactReply"
+        },
+        "linked_objects": {
+          "$ref": "#/types/intercom:index:LinkedObjectList"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Indicates whether a conversation is open (true) or closed (false)."
+        },
+        "priority": {
+          "type": "string",
+          "description": "If marked as priority, it will return priority or else not_priority."
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Indicates whether a conversation has been read."
+        },
+        "sla_applied": {
+          "$ref": "#/types/intercom:index:SlaApplied"
+        },
+        "snoozed_until": {
+          "type": "integer",
+          "description": "If set this is the time in the future when this conversation will be marked as open. i.e. it will be in a snoozed state until this time. i.e. it will be in a snoozed state until this time."
+        },
+        "source": {
+          "$ref": "#/types/intercom:index:ConversationSource"
+        },
+        "state": {
+          "type": "string",
+          "description": "Can be set to \"open\", \"closed\" or \"snoozed\"."
+        },
+        "statistics": {
+          "$ref": "#/types/intercom:index:ConversationStatistics"
+        },
+        "tags": {
+          "$ref": "#/types/intercom:index:Tags"
+        },
+        "team_assignee_id": {
+          "type": "integer",
+          "description": "The id of the team assigned to the conversation. If it's not assigned to a team it will return null."
+        },
+        "teammates": {
+          "$ref": "#/types/intercom:index:ConversationTeammates"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title given to the conversation."
+        },
+        "type": {
+          "type": "string",
+          "description": "Always conversation."
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The last time the conversation was updated."
+        },
+        "waiting_since": {
+          "type": "integer",
+          "description": "The last time a Contact responded to an Admin. In other words, the time a customer started waiting for a response. Set to null if last reply is from an Admin."
+        }
+      },
+      "inputProperties": {
+        "admin_id": {
+          "type": "string",
+          "description": "The `id` of the admin who is adding the new participant."
+        },
+        "conversation_id": {
+          "type": "string"
+        },
+        "customer": {
+          "type": "object"
+        }
+      },
+      "requiredInputs": [
+        "conversation_id"
+      ]
+    },
+    "intercom:customobjectinstances:CustomObjectInstances": {
+      "properties": {
+        "created_at": {
+          "type": "integer",
+          "description": "The time the attribute was created as a UTC Unix timestamp"
+        },
+        "custom_attributes": {
+          "type": "object",
+          "description": "The custom attributes which are set for the Custom Object instance."
+        },
+        "custom_object_type_identifier": {
+          "type": "string"
+        },
+        "external_created_at": {
+          "type": "integer",
+          "description": "The time when the Custom Object instance was created in the external system it originated from."
+        },
+        "external_id": {
+          "type": "string",
+          "description": "A unique identifier for the Custom Object instance in the external system it originated from."
+        },
+        "external_updated_at": {
+          "type": "integer",
+          "description": "The time when the Custom Object instance was last updated in the external system it originated from."
+        },
+        "type": {
+          "type": "string",
+          "description": "The identifier of the custom object type that defines the structure of the custom object instance."
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The time the attribute was last updated as a UTC Unix timestamp"
+        }
+      },
+      "inputProperties": {
+        "custom_attributes": {
+          "type": "object",
+          "description": "The custom attributes which are set for the Custom Object instance."
+        },
+        "custom_object_type_identifier": {
+          "type": "string"
+        },
+        "external_created_at": {
+          "type": "integer",
+          "description": "The time when the Custom Object instance was created in the external system it originated from."
+        },
+        "external_id": {
+          "type": "string",
+          "description": "A unique identifier for the Custom Object instance in the external system it originated from."
+        },
+        "external_updated_at": {
+          "type": "integer",
+          "description": "The time when the Custom Object instance was last updated in the external system it originated from."
+        }
+      },
+      "requiredInputs": [
+        "custom_object_type_identifier"
+      ]
+    },
+    "intercom:dataexport:ExportContentData": {
+      "properties": {
+        "created_at_after": {
+          "type": "integer",
+          "description": "The start date that you request data for. It must be formatted as a unix timestamp."
+        },
+        "created_at_before": {
+          "type": "integer",
+          "description": "The end date that you request data for. It must be formatted as a unix timestamp."
+        },
+        "download_expires_at": {
+          "type": "string",
+          "description": "The time after which you will not be able to access the data."
+        },
+        "download_url": {
+          "type": "string",
+          "description": "The location where you can download your data."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current state of your job."
+        }
+      },
+      "inputProperties": {
+        "created_at_after": {
+          "type": "integer",
+          "description": "The start date that you request data for. It must be formatted as a unix timestamp."
+        },
+        "created_at_before": {
+          "type": "integer",
+          "description": "The end date that you request data for. It must be formatted as a unix timestamp."
+        }
+      },
+      "requiredInputs": [
+        "created_at_after",
+        "created_at_before"
+      ]
+    },
+    "intercom:helpcenter:HelpCenterCollections": {
+      "properties": {
+        "created_at": {
+          "type": "integer",
+          "description": "The time when the article was created (seconds). For multilingual articles, this will be the timestamp of creation of the default language's content."
+        },
+        "default_locale": {
+          "type": "string",
+          "description": "The default locale of the help center. This field is only returned for multilingual help centers."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the collection. For multilingual collections, this will be the description of the default language's content."
+        },
+        "help_center_id": {
+          "type": "integer",
+          "description": "The id of the help center where the collection will be created. If `null` then it will be created in the default help center."
+        },
+        "icon": {
+          "type": "string",
+          "description": "The icon of the collection."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the collection. For multilingual collections, this will be the name of the default language's content."
+        },
+        "order": {
+          "type": "integer",
+          "description": "The order of the section in relation to others sections within a collection. Values go from `0` upwards. `0` is the default if there's no order."
+        },
+        "parent_id": {
+          "type": "string",
+          "description": "The id of the parent collection. If `null` then it will be created as the first level collection."
+        },
+        "translated_content": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The time when the article was last updated (seconds). For multilingual articles, this will be the timestamp of last update of the default language's content."
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the collection. For multilingual help centers, this will be the URL of the collection for the default language."
+        },
+        "workspace_id": {
+          "type": "string",
+          "description": "The id of the workspace which the collection belongs to."
+        }
+      },
+      "inputProperties": {
+        "description": {
+          "type": "string",
+          "description": "The description of the collection. For multilingual collections, this will be the description of the default language's content."
+        },
+        "help_center_id": {
+          "type": "integer",
+          "description": "The id of the help center where the collection will be created. If `null` then it will be created in the default help center."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the collection. For multilingual collections, this will be the name of the default language's content."
+        },
+        "parent_id": {
+          "type": "string",
+          "description": "The id of the parent collection. If `null` then it will be created as the first level collection."
+        },
+        "translated_content": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "name"
+      ]
+    },
+    "intercom:internalarticles:InternalArticles": {
+      "properties": {
+        "author_id": {
+          "type": "integer",
+          "description": "The id of the author of the article."
+        },
+        "body": {
+          "type": "string",
+          "description": "The content of the article."
+        },
+        "owner_id": {
+          "type": "integer",
+          "description": "The id of the owner of the article."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the article."
+        }
+      },
+      "inputProperties": {
+        "author_id": {
+          "type": "integer",
+          "description": "The id of the author of the article."
+        },
+        "body": {
+          "type": "string",
+          "description": "The content of the article."
+        },
+        "owner_id": {
+          "type": "integer",
+          "description": "The id of the owner of the article."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the article."
+        }
+      },
+      "requiredInputs": [
+        "title",
+        "owner_id",
+        "author_id"
+      ]
+    },
+    "intercom:news:NewsNewsItems": {
+      "properties": {
+        "body": {
+          "type": "string",
+          "description": "The news item body, which may contain HTML."
+        },
+        "cover_image_url": {
+          "type": "string",
+          "description": "URL of the image used as cover. Must have .jpg or .png extension."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "Timestamp for when the news item was created."
+        },
+        "deliver_silently": {
+          "type": "boolean",
+          "description": "When set to `true`, the news item will appear in the messenger newsfeed without showing a notification badge."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Label names displayed to users to categorize the news item."
+        },
+        "newsfeed_assignments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:NewsfeedAssignment"
+          },
+          "description": "A list of newsfeed_assignments to assign to the specified newsfeed."
+        },
+        "reactions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered list of emoji reactions to the news item. When empty, reactions are disabled."
+        },
+        "sender_id": {
+          "type": "integer",
+          "description": "The id of the sender of the news item. Must be a teammate on the workspace."
+        },
+        "state": {
+          "type": "string",
+          "description": "News items will not be visible to your users in the assigned newsfeeds until they are set live."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the news item."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of object."
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "Timestamp for when the news item was last updated."
+        },
+        "workspace_id": {
+          "type": "string",
+          "description": "The id of the workspace which the news item belongs to."
+        }
+      },
+      "inputProperties": {
+        "body": {
+          "type": "string",
+          "description": "The news item body, which may contain HTML."
+        },
+        "deliver_silently": {
+          "type": "boolean",
+          "description": "When set to `true`, the news item will appear in the messenger newsfeed without showing a notification badge."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Label names displayed to users to categorize the news item."
+        },
+        "newsfeed_assignments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:NewsfeedAssignment"
+          },
+          "description": "A list of newsfeed_assignments to assign to the specified newsfeed."
+        },
+        "reactions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered list of emoji reactions to the news item. When empty, reactions are disabled."
+        },
+        "sender_id": {
+          "type": "integer",
+          "description": "The id of the sender of the news item. Must be a teammate on the workspace."
+        },
+        "state": {
+          "type": "string",
+          "description": "News items will not be visible to your users in the assigned newsfeeds until they are set live."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the news item."
+        }
+      },
+      "requiredInputs": [
+        "title",
+        "sender_id"
+      ]
+    },
+    "intercom:subscriptiontypes:ContactsSubscriptions": {
+      "properties": {
+        "consent_type": {
+          "type": "string",
+          "description": "The consent_type of a subscription, opt_out or opt_in."
+        },
+        "contact_id": {
+          "type": "string"
+        },
+        "content_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The message types that this subscription supports - can contain `email` or `sms_message`."
+        },
+        "default_translation": {
+          "$ref": "#/types/intercom:index:Translation"
+        },
+        "state": {
+          "type": "string",
+          "description": "The state of the subscription type."
+        },
+        "translations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/intercom:index:Translation"
+          },
+          "description": "An array of translations objects with the localised version of the subscription type in each available locale within your translation settings."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the object - subscription"
+        }
+      },
+      "inputProperties": {
+        "consent_type": {
+          "type": "string",
+          "description": "The consent_type of a subscription, opt_out or opt_in."
+        },
+        "contact_id": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "consent_type",
+        "contact_id"
+      ]
+    },
+    "intercom:tags:ContactsTags": {
+      "properties": {
+        "applied_at": {
+          "type": "integer",
+          "description": "The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "applied_by": {
+          "type": "object",
+          "description": "The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "contact_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the tag"
+        },
+        "type": {
+          "type": "string",
+          "description": "value is \"tag\""
+        }
+      },
+      "inputProperties": {
+        "contact_id": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "contact_id"
+      ]
+    },
+    "intercom:tags:ConversationsTags": {
+      "properties": {
+        "admin_id": {
+          "type": "string",
+          "description": "The unique identifier for the admin which is given by Intercom."
+        },
+        "applied_at": {
+          "type": "integer",
+          "description": "The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "applied_by": {
+          "type": "object",
+          "description": "The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "conversation_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the tag"
+        },
+        "type": {
+          "type": "string",
+          "description": "value is \"tag\""
+        }
+      },
+      "inputProperties": {
+        "admin_id": {
+          "type": "string",
+          "description": "The unique identifier for the admin which is given by Intercom."
+        },
+        "conversation_id": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "admin_id",
+        "conversation_id"
+      ]
+    },
+    "intercom:tags:Tags": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the tag"
+        },
+        "type": {
+          "type": "string",
+          "description": "value is \"tag\""
+        }
+      }
+    },
+    "intercom:tags:TicketsTags": {
+      "properties": {
+        "admin_id": {
+          "type": "string",
+          "description": "The unique identifier for the admin which is given by Intercom."
+        },
+        "applied_at": {
+          "type": "integer",
+          "description": "The time when the tag was applied to the object. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "applied_by": {
+          "type": "object",
+          "description": "The admin who applied the tag. Only present when the tag is returned as part of a tagging operation on a contact, conversation, or ticket."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the tag"
+        },
+        "ticket_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "value is \"tag\""
+        }
+      },
+      "inputProperties": {
+        "admin_id": {
+          "type": "string",
+          "description": "The unique identifier for the admin which is given by Intercom."
+        },
+        "ticket_id": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "admin_id",
+        "ticket_id"
+      ]
+    },
+    "intercom:tickets:Tickets": {
+      "properties": {
+        "admin_assignee_id": {
+          "type": "string",
+          "description": "The id representing the admin assigned to the ticket."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the Ticket."
+        },
+        "contacts": {
+          "$ref": "#/types/intercom:index:TicketContacts"
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The time the ticket was created as a UTC Unix timestamp."
+        },
+        "is_shared": {
+          "type": "boolean",
+          "description": "Whether or not the ticket is shared with the customer."
+        },
+        "linked_objects": {
+          "$ref": "#/types/intercom:index:LinkedObjectList"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Whether or not the ticket is open. If false, the ticket is closed."
+        },
+        "skip_notifications": {
+          "type": "boolean",
+          "description": "Option to disable notifications when a Ticket is created."
+        },
+        "snoozed_until": {
+          "type": "integer",
+          "description": "The time the ticket will be snoozed until as a UTC Unix timestamp. If null, the ticket is not currently snoozed."
+        },
+        "team_assignee_id": {
+          "type": "string",
+          "description": "The id representing the team assigned to the ticket."
+        },
+        "ticket_attributes": {
+          "$ref": "#/types/intercom:index:TicketCustomAttributes"
+        },
+        "ticket_id": {
+          "type": "string",
+          "description": "The ID of the Ticket used in the Intercom Inbox and Messenger. Do not use ticket_id for API queries."
+        },
+        "ticket_parts": {
+          "$ref": "#/types/intercom:index:TicketParts"
+        },
+        "ticket_state": {
+          "$ref": "#/types/intercom:index:TicketState"
+        },
+        "ticket_type": {
+          "$ref": "#/types/intercom:index:TicketType"
+        },
+        "type": {
+          "type": "string",
+          "description": "Always ticket"
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The last time the ticket was updated as a UTC Unix timestamp."
+        }
+      },
+      "inputProperties": {
+        "skip_notifications": {
+          "type": "boolean",
+          "description": "Option to disable notifications when a Ticket is created."
+        }
+      }
+    },
+    "intercom:tickettypes:TicketTypes": {
+      "properties": {
+        "archived": {
+          "type": "boolean",
+          "description": "Whether the ticket type is archived or not."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the Ticket Type."
+        },
+        "created_at": {
+          "type": "integer",
+          "description": "The date and time the ticket type was created."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the ticket type."
+        },
+        "icon": {
+          "type": "string",
+          "description": "The icon of the ticket type."
+        },
+        "is_internal": {
+          "type": "boolean",
+          "description": "Whether the tickets associated with this ticket type are intended for internal use only or will be shared with customers. This is currently a limited attribute."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the ticket type."
+        },
+        "ticket_states": {
+          "type": "object",
+          "description": "A list of ticket states associated with a given ticket type."
+        },
+        "ticket_type_attributes": {
+          "$ref": "#/types/intercom:index:TicketTypeAttributeList"
+        },
+        "type": {
+          "type": "string",
+          "description": "String representing the object's type. Always has the value `ticket_type`."
+        },
+        "updated_at": {
+          "type": "integer",
+          "description": "The date and time the ticket type was last updated."
+        },
+        "workspace_id": {
+          "type": "string",
+          "description": "The id of the workspace that the ticket type belongs to."
+        }
+      },
+      "inputProperties": {
+        "category": {
+          "type": "string",
+          "description": "Category of the Ticket Type."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the ticket type."
+        },
+        "icon": {
+          "type": "string",
+          "description": "The icon of the ticket type."
+        },
+        "is_internal": {
+          "type": "boolean",
+          "description": "Whether the tickets associated with this ticket type are intended for internal use only or will be shared with customers. This is currently a limited attribute."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the ticket type."
+        }
+      },
+      "requiredInputs": [
+        "name"
+      ]
+    }
+  }
+}
