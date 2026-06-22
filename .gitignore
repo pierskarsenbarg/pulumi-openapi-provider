@@ -11,3 +11,8 @@ coverage.txt
 
 # Generated SDKs
 examples/**/sdk
+integration-tests/dev.db
+integration-tests/dev.db-shm
+integration-tests/dev.db-wal
+integration-tests/pulumi/Pulumi.test.yaml
+integration-tests/pulumi/package-lock.json
