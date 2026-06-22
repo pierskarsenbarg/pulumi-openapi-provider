@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { resolver, validator } from "hono-openapi/valibot";
+import { resolver, validator, describeRoute } from "hono-openapi";
 import * as v from "valibot";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
@@ -43,7 +42,10 @@ membersRouter.post(
     const body = c.req.valid("json");
 
     const team = await db.query.teams.findFirst({
-      where: and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
+      where: and(
+        eq(teams.id, teamId),
+        eq(teams.organisationId, organisationId),
+      ),
     });
     if (!team) return c.json({ error: "Team not found" }, 404);
 
@@ -51,8 +53,11 @@ membersRouter.post(
       .insert(teamMembers)
       .values({ userId: body.userId, teamId })
       .returning();
-    return c.json({ ...member, createdAt: member.createdAt?.toISOString() ?? null }, 201);
-  }
+    return c.json(
+      { ...member, createdAt: member.createdAt?.toISOString() ?? null },
+      201,
+    );
+  },
 );
 
 membersRouter.get(
@@ -77,8 +82,11 @@ membersRouter.get(
       where: and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)),
     });
     if (!member) return c.json({ error: "Membership not found" }, 404);
-    return c.json({ ...member, createdAt: member.createdAt?.toISOString() ?? null });
-  }
+    return c.json({
+      ...member,
+      createdAt: member.createdAt?.toISOString() ?? null,
+    });
+  },
 );
 
 membersRouter.delete(
@@ -100,7 +108,8 @@ membersRouter.delete(
       .delete(teamMembers)
       .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)))
       .returning();
-    if (result.length === 0) return c.json({ error: "Membership not found" }, 404);
+    if (result.length === 0)
+      return c.json({ error: "Membership not found" }, 404);
     return new Response(null, { status: 204 });
-  }
+  },
 );

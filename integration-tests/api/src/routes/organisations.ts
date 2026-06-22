@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { resolver, validator } from "hono-openapi/valibot";
+import { resolver, validator, describeRoute } from "hono-openapi";
 import * as v from "valibot";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
@@ -28,16 +27,24 @@ organisationsRouter.post(
     responses: {
       201: {
         description: "Organisation created",
-        content: { "application/json": { schema: resolver(organisationResponse) } },
+        content: {
+          "application/json": { schema: resolver(organisationResponse) },
+        },
       },
     },
   }),
   validator("json", organisationBody),
   async (c) => {
     const body = c.req.valid("json");
-    const [org] = await db.insert(organisations).values({ name: body.name }).returning();
-    return c.json({ ...org, createdAt: org.createdAt?.toISOString() ?? null }, 201);
-  }
+    const [org] = await db
+      .insert(organisations)
+      .values({ name: body.name })
+      .returning();
+    return c.json(
+      { ...org, createdAt: org.createdAt?.toISOString() ?? null },
+      201,
+    );
+  },
 );
 
 organisationsRouter.get(
@@ -48,7 +55,9 @@ organisationsRouter.get(
     responses: {
       200: {
         description: "Organisation found",
-        content: { "application/json": { schema: resolver(organisationResponse) } },
+        content: {
+          "application/json": { schema: resolver(organisationResponse) },
+        },
       },
       404: {
         description: "Not found",
@@ -63,7 +72,7 @@ organisationsRouter.get(
     });
     if (!org) return c.json({ error: "Organisation not found" }, 404);
     return c.json({ ...org, createdAt: org.createdAt?.toISOString() ?? null });
-  }
+  },
 );
 
 organisationsRouter.patch(
@@ -74,7 +83,9 @@ organisationsRouter.patch(
     responses: {
       200: {
         description: "Organisation updated",
-        content: { "application/json": { schema: resolver(organisationResponse) } },
+        content: {
+          "application/json": { schema: resolver(organisationResponse) },
+        },
       },
       404: {
         description: "Not found",
@@ -93,7 +104,7 @@ organisationsRouter.patch(
       .returning();
     if (!org) return c.json({ error: "Organisation not found" }, 404);
     return c.json({ ...org, createdAt: org.createdAt?.toISOString() ?? null });
-  }
+  },
 );
 
 organisationsRouter.delete(
@@ -115,7 +126,8 @@ organisationsRouter.delete(
       .delete(organisations)
       .where(eq(organisations.id, organisationId))
       .returning();
-    if (result.length === 0) return c.json({ error: "Organisation not found" }, 404);
+    if (result.length === 0)
+      return c.json({ error: "Organisation not found" }, 404);
     return new Response(null, { status: 204 });
-  }
+  },
 );

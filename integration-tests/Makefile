@@ -50,4 +50,4 @@ test: install-sdks
 	cd pulumi && pulumi stack rm test --yes --non-interactive
 
 clean:
-	rm -rf bin $(SCHEMA_FILE) $(SDK_DIR) api/dev.db api/migrations pulumi/bin pulumi/node_modules
+	rm -rf bin $(SCHEMA_FILE) $(SDK_DIR) api/dev.db api/migrations pulumi/bin pulumi/node_modules api/node_modules

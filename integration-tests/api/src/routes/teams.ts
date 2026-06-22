@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { resolver, validator } from "hono-openapi/valibot";
+import { resolver, validator, describeRoute } from "hono-openapi";
 import * as v from "valibot";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
@@ -51,8 +50,11 @@ teamsRouter.post(
       .insert(teams)
       .values({ name: body.name, organisationId })
       .returning();
-    return c.json({ ...team, createdAt: team.createdAt?.toISOString() ?? null }, 201);
-  }
+    return c.json(
+      { ...team, createdAt: team.createdAt?.toISOString() ?? null },
+      201,
+    );
+  },
 );
 
 teamsRouter.get(
@@ -74,11 +76,17 @@ teamsRouter.get(
   async (c) => {
     const { organisationId, teamId } = c.req.param();
     const team = await db.query.teams.findFirst({
-      where: and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
+      where: and(
+        eq(teams.id, teamId),
+        eq(teams.organisationId, organisationId),
+      ),
     });
     if (!team) return c.json({ error: "Team not found" }, 404);
-    return c.json({ ...team, createdAt: team.createdAt?.toISOString() ?? null });
-  }
+    return c.json({
+      ...team,
+      createdAt: team.createdAt?.toISOString() ?? null,
+    });
+  },
 );
 
 teamsRouter.patch(
@@ -104,11 +112,16 @@ teamsRouter.patch(
     const [team] = await db
       .update(teams)
       .set({ name: body.name })
-      .where(and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)))
+      .where(
+        and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
+      )
       .returning();
     if (!team) return c.json({ error: "Team not found" }, 404);
-    return c.json({ ...team, createdAt: team.createdAt?.toISOString() ?? null });
-  }
+    return c.json({
+      ...team,
+      createdAt: team.createdAt?.toISOString() ?? null,
+    });
+  },
 );
 
 teamsRouter.delete(
@@ -128,9 +141,11 @@ teamsRouter.delete(
     const { organisationId, teamId } = c.req.param();
     const result = await db
       .delete(teams)
-      .where(and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)))
+      .where(
+        and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
+      )
       .returning();
     if (result.length === 0) return c.json({ error: "Team not found" }, 404);
     return new Response(null, { status: 204 });
-  }
+  },
 );
