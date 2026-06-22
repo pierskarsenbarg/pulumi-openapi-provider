@@ -1,8 +1,8 @@
 PROVIDER_BINARY := bin/pulumi-resource-testapi
-
-export PATH := $(CURDIR)/bin:$(PATH)
 SCHEMA_FILE     := schema.json
 SDK_DIR         := pulumi/sdk
+
+export PATH := $(CURDIR)/bin:$(PATH)
 
 .PHONY: all setup install-api generate migrate build-provider schema sdk install-sdks clean run-api test
 
