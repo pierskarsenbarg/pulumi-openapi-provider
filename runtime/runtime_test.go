@@ -453,6 +453,96 @@ func TestDo_EmptyBody(t *testing.T) {
 	}
 }
 
+// --- handleCheck ---
+
+func TestHandleCheck_NoRequiredInputs(t *testing.T) {
+	res := testResource() // RequiredInputs is nil
+	inputs := property.NewMap(map[string]property.Value{"name": property.New("Fido")})
+	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Failures) != 0 {
+		t.Errorf("expected no failures, got %v", resp.Failures)
+	}
+}
+
+func TestHandleCheck_AllRequiredPresent(t *testing.T) {
+	res := testResource()
+	res.RequiredInputs = []string{"name", "status"}
+	inputs := property.NewMap(map[string]property.Value{
+		"name":   property.New("Fido"),
+		"status": property.New("available"),
+	})
+	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Failures) != 0 {
+		t.Errorf("expected no failures, got %v", resp.Failures)
+	}
+}
+
+func TestHandleCheck_MissingRequired(t *testing.T) {
+	res := testResource()
+	res.RequiredInputs = []string{"name", "status"}
+	inputs := property.NewMap(map[string]property.Value{
+		"name": property.New("Fido"),
+		// "status" is missing
+	})
+	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Failures) != 1 {
+		t.Fatalf("expected 1 failure, got %d: %v", len(resp.Failures), resp.Failures)
+	}
+	if resp.Failures[0].Property != "status" {
+		t.Errorf("failure property = %q, want status", resp.Failures[0].Property)
+	}
+}
+
+func TestHandleCheck_AllRequiredMissing(t *testing.T) {
+	res := testResource()
+	res.RequiredInputs = []string{"name", "status"}
+	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: property.NewMap(nil)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Failures) != 2 {
+		t.Fatalf("expected 2 failures, got %d: %v", len(resp.Failures), resp.Failures)
+	}
+}
+
+func TestHandleCheck_InputsPassedThrough(t *testing.T) {
+	res := testResource()
+	res.RequiredInputs = []string{"name"}
+	inputs := property.NewMap(map[string]property.Value{
+		"name":  property.New("Fido"),
+		"extra": property.New("bonus"),
+	})
+	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := resp.Inputs.GetOk("extra"); !ok || v.AsString() != "bonus" {
+		t.Error("inputs were not passed through unchanged")
+	}
+}
+
+func TestHandleCheck_ContextParamRequired(t *testing.T) {
+	res := testResource()
+	res.RequiredInputs = []string{"orgName"}
+	inputs := property.NewMap(map[string]property.Value{}) // orgName missing
+	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Failures) != 1 || resp.Failures[0].Property != "orgName" {
+		t.Errorf("expected failure for orgName, got %v", resp.Failures)
+	}
+}
+
 // --- Configure validation ---
 
 func TestConfigure_ErrorWhenBaseURLEmpty(t *testing.T) {

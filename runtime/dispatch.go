@@ -34,6 +34,14 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			return nil
 		},
 
+		Check: func(ctx context.Context, req p.CheckRequest) (p.CheckResponse, error) {
+			res, err := lookupResource(byToken, string(req.Urn))
+			if err != nil {
+				return p.CheckResponse{}, err
+			}
+			return handleCheck(ctx, res, req)
+		},
+
 		Create: func(ctx context.Context, req p.CreateRequest) (p.CreateResponse, error) {
 			res, err := lookupResource(byToken, string(req.Urn))
 			if err != nil {
