@@ -22,7 +22,7 @@ type crudClient struct {
 
 // create calls POST on the create endpoint and returns the new resource ID and state.
 func (c *crudClient) create(ctx context.Context, res spec.ResourceDef, inputs property.Map) (string, property.Map, error) {
-	body := propertyMapToGoMap(inputs)
+	body := propertyMapToAPIBody(inputs, res.APIPropertyNames)
 	path := substituteAllParams(res.CreatePath, "", res.IDPathParam, body)
 	respBody, err := c.request(ctx, res.CreateMethod, path, body)
 	if err != nil {
@@ -34,7 +34,7 @@ func (c *crudClient) create(ctx context.Context, res spec.ResourceDef, inputs pr
 		return "", property.Map{}, fmt.Errorf("create %s: could not extract ID from response (looked for field %q)", res.Name, res.IDField)
 	}
 
-	outputs := goMapToPropertyMap(respBody)
+	outputs := apiBodyToPropertyMap(respBody, res.APIPropertyNames)
 	return id, outputs, nil
 }
 
@@ -49,7 +49,7 @@ func (c *crudClient) read(ctx context.Context, res spec.ResourceDef, id string, 
 		}
 		return property.Map{}, fmt.Errorf("read %s: %w", res.Name, err)
 	}
-	return goMapToPropertyMap(respBody), nil
+	return apiBodyToPropertyMap(respBody, res.APIPropertyNames), nil
 }
 
 // update calls PUT or PATCH on the update endpoint.
@@ -57,13 +57,13 @@ func (c *crudClient) update(ctx context.Context, res spec.ResourceDef, id string
 	if res.UpdatePath == "" {
 		return inputs, nil
 	}
-	body := propertyMapToGoMap(inputs)
+	body := propertyMapToAPIBody(inputs, res.APIPropertyNames)
 	path := substituteAllParams(res.UpdatePath, id, res.IDPathParam, body)
 	respBody, err := c.request(ctx, res.UpdateMethod, path, body)
 	if err != nil {
 		return property.Map{}, fmt.Errorf("update %s: %w", res.Name, err)
 	}
-	return goMapToPropertyMap(respBody), nil
+	return apiBodyToPropertyMap(respBody, res.APIPropertyNames), nil
 }
 
 // del calls DELETE on the delete endpoint.
@@ -196,6 +196,42 @@ func extractID(body map[string]interface{}, idField, idPathParam string) string 
 		}
 	}
 	return ""
+}
+
+// propertyMapToAPIBody converts a property.Map to a plain Go map, translating camelCase
+// Pulumi property keys back to their original API names using the aliases map.
+func propertyMapToAPIBody(m property.Map, aliases map[string]string) map[string]interface{} {
+	result := map[string]interface{}{}
+	m.All(func(key string, val property.Value) bool {
+		apiKey := key
+		if aliases != nil {
+			if orig, ok := aliases[key]; ok {
+				apiKey = orig
+			}
+		}
+		result[apiKey] = propertyValueToGo(val)
+		return true
+	})
+	return result
+}
+
+// apiBodyToPropertyMap converts an API response map to a property.Map, translating API
+// property names to camelCase Pulumi names using the reverse of the aliases map.
+// Nested object keys are converted generically with toCamelCase.
+func apiBodyToPropertyMap(m map[string]interface{}, aliases map[string]string) property.Map {
+	reverse := make(map[string]string, len(aliases))
+	for camel, api := range aliases {
+		reverse[api] = camel
+	}
+	vals := map[string]property.Value{}
+	for k, v := range m {
+		pulumiKey := k
+		if camel, ok := reverse[k]; ok {
+			pulumiKey = camel
+		}
+		vals[pulumiKey] = goValueToProperty(v)
+	}
+	return property.NewMap(vals)
 }
 
 // propertyMapToGoMap converts a property.Map to a plain Go map for JSON marshaling.

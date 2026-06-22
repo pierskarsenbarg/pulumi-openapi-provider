@@ -35,9 +35,10 @@ type ResourceDef struct {
 	IDPathParam  string // path param name used as resource ID, e.g. "petId"
 	IDField      string // JSON field name holding the server-assigned ID, e.g. "id"
 
-	InputSchema    map[string]pschema.PropertySpec
-	OutputSchema   map[string]pschema.PropertySpec
-	RequiredInputs []string
+	InputSchema      map[string]pschema.PropertySpec
+	OutputSchema     map[string]pschema.PropertySpec
+	RequiredInputs   []string
+	APIPropertyNames map[string]string // camelCase Pulumi name → original API name, e.g. {"syncBehavior": "sync_behavior"}
 }
 
 // DiscoveryResult contains all resources and shared types discovered from the spec.
@@ -293,6 +294,34 @@ func splitWords(s string) []string {
 	return strings.FieldsFunc(s, func(r rune) bool { return r == '-' || r == '_' })
 }
 
+// toPascalCase converts a snake_case or kebab-case string to PascalCase.
+func toPascalCase(s string) string {
+	var parts []string
+	for _, w := range splitWords(s) {
+		if w != "" {
+			parts = append(parts, capitalize(w))
+		}
+	}
+	if len(parts) == 0 {
+		return s
+	}
+	return strings.Join(parts, "")
+}
+
+// toCamelCase converts a snake_case or kebab-case string to camelCase.
+func toCamelCase(s string) string {
+	words := splitWords(s)
+	if len(words) == 0 {
+		return s
+	}
+	var b strings.Builder
+	b.WriteString(strings.ToLower(words[0]))
+	for _, w := range words[1:] {
+		b.WriteString(capitalize(w))
+	}
+	return b.String()
+}
+
 // contextPathParams returns path parameter names found in path that are not the resource ID.
 // These are "parent scope" params like {orgName} that the user must supply as inputs.
 func contextPathParams(path, idPathParam string) []string {
@@ -401,27 +430,32 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 	// Build input and output properties
 	inputs := map[string]pschema.PropertySpec{}
 	outputs := map[string]pschema.PropertySpec{}
+	apiPropertyNames := map[string]string{}
 	var requiredInputs []string
 
 	if createSchema != nil {
 		for pair := createSchema.Properties.Oldest(); pair != nil; pair = pair.Next() {
-			propName := pair.Key
-			propProxy := pair.Value
-			spec := tc.convertProperty(propProxy, swagger.Definitions)
-			inputs[propName] = spec
-			outputs[propName] = spec
+			apiName := pair.Key
+			camelName := toCamelCase(apiName)
+			spec := tc.convertProperty(pair.Value, swagger.Definitions)
+			inputs[camelName] = spec
+			outputs[camelName] = spec
+			apiPropertyNames[camelName] = apiName
 		}
-		requiredInputs = filterRequired(createSchema.Required, idPathParam)
+		for _, r := range filterRequired(createSchema.Required, idPathParam) {
+			requiredInputs = append(requiredInputs, toCamelCase(r))
+		}
 	}
 
 	// Merge in output-only properties from the read schema
 	if readSchema != nil {
 		for pair := readSchema.Properties.Oldest(); pair != nil; pair = pair.Next() {
-			propName := pair.Key
-			propProxy := pair.Value
-			if _, alreadyInput := inputs[propName]; !alreadyInput {
-				spec := tc.convertProperty(propProxy, swagger.Definitions)
-				outputs[propName] = spec
+			apiName := pair.Key
+			camelName := toCamelCase(apiName)
+			if _, alreadyInput := inputs[camelName]; !alreadyInput {
+				spec := tc.convertProperty(pair.Value, swagger.Definitions)
+				outputs[camelName] = spec
+				apiPropertyNames[camelName] = apiName
 			}
 		}
 	}
@@ -439,6 +473,8 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 		// "id" is a reserved property name in Pulumi (available automatically on all resources).
 		delete(inputs, idField)
 		delete(outputs, idField)
+		delete(inputs, toCamelCase(idField))
+		delete(outputs, toCamelCase(idField))
 	}
 	// Always remove "id" from outputs — Pulumi reserves it as a built-in resource property.
 	delete(outputs, "id")
@@ -446,7 +482,9 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 	// Remove ID from required inputs (it is server-assigned)
 	if idField != "" {
 		requiredInputs = removeFromSlice(requiredInputs, idField)
+		requiredInputs = removeFromSlice(requiredInputs, toCamelCase(idField))
 		requiredInputs = removeFromSlice(requiredInputs, idPathParam)
+		requiredInputs = removeFromSlice(requiredInputs, toCamelCase(idPathParam))
 	}
 
 	// Add context path params (e.g. {orgName}) that are not in the body schema.
@@ -465,19 +503,20 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 	}
 
 	return ResourceDef{
-		Name:           g.name,
-		Token:          token,
-		CreatePath:     g.collectionPath,
-		CreateMethod:   "POST",
-		ReadPath:       g.itemPath,
-		UpdatePath:     updatePath,
-		UpdateMethod:   updateMethod,
-		DeletePath:     g.itemPath,
-		IDPathParam:    idPathParam,
-		IDField:        idField,
-		InputSchema:    inputs,
-		OutputSchema:   outputs,
-		RequiredInputs: requiredInputs,
+		Name:             g.name,
+		Token:            token,
+		CreatePath:       g.collectionPath,
+		CreateMethod:     "POST",
+		ReadPath:         g.itemPath,
+		UpdatePath:       updatePath,
+		UpdateMethod:     updateMethod,
+		DeletePath:       g.itemPath,
+		IDPathParam:      idPathParam,
+		IDField:          idField,
+		InputSchema:      inputs,
+		OutputSchema:     outputs,
+		RequiredInputs:   requiredInputs,
+		APIPropertyNames: apiPropertyNames,
 	}, true
 }
 
@@ -640,7 +679,7 @@ func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2hi
 			tc.ensureType(defName, defs)
 			return pschema.PropertySpec{
 				TypeSpec: pschema.TypeSpec{
-					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, defName),
+					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(defName)),
 				},
 			}
 		}
@@ -712,7 +751,7 @@ func (tc *typeCollector) arrayItemSpec(schema *highbase.Schema, defs *v2high.Def
 		if defName != "" {
 			tc.ensureType(defName, defs)
 			return pschema.TypeSpec{
-				Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, defName),
+				Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(defName)),
 			}
 		}
 	}
@@ -731,7 +770,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 	if defs == nil {
 		return
 	}
-	token := fmt.Sprintf("%s:index:%s", tc.pkgName, defName)
+	token := fmt.Sprintf("%s:index:%s", tc.pkgName, toPascalCase(defName))
 	if _, exists := tc.types[token]; exists {
 		return
 	}
@@ -747,7 +786,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 	props := map[string]pschema.PropertySpec{}
 	if defSchema.Properties != nil {
 		for pair := defSchema.Properties.Oldest(); pair != nil; pair = pair.Next() {
-			props[pair.Key] = tc.convertProperty(pair.Value, defs)
+			props[toCamelCase(pair.Key)] = tc.convertProperty(pair.Value, defs)
 		}
 	}
 
@@ -926,23 +965,30 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 
 	inputs := map[string]pschema.PropertySpec{}
 	outputs := map[string]pschema.PropertySpec{}
+	apiPropertyNames := map[string]string{}
 	var requiredInputs []string
 
 	if createSchema != nil {
 		if createSchema.Properties != nil {
-			for propName, propProxy := range createSchema.Properties.FromOldest() {
+			for apiName, propProxy := range createSchema.Properties.FromOldest() {
+				camelName := toCamelCase(apiName)
 				spec := tc.convertProperty(propProxy)
-				inputs[propName] = spec
-				outputs[propName] = spec
+				inputs[camelName] = spec
+				outputs[camelName] = spec
+				apiPropertyNames[camelName] = apiName
 			}
 		}
-		requiredInputs = filterRequired(createSchema.Required, idPathParam)
+		for _, r := range filterRequired(createSchema.Required, idPathParam) {
+			requiredInputs = append(requiredInputs, toCamelCase(r))
+		}
 	}
 
 	if readSchema != nil && readSchema.Properties != nil {
-		for propName, propProxy := range readSchema.Properties.FromOldest() {
-			if _, alreadyInput := inputs[propName]; !alreadyInput {
-				outputs[propName] = tc.convertProperty(propProxy)
+		for apiName, propProxy := range readSchema.Properties.FromOldest() {
+			camelName := toCamelCase(apiName)
+			if _, alreadyInput := inputs[camelName]; !alreadyInput {
+				outputs[camelName] = tc.convertProperty(propProxy)
+				apiPropertyNames[camelName] = apiName
 			}
 		}
 	}
@@ -956,8 +1002,12 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 	if idField != "" {
 		delete(inputs, idField)
 		delete(outputs, idField)
+		delete(inputs, toCamelCase(idField))
+		delete(outputs, toCamelCase(idField))
 		requiredInputs = removeFromSlice(requiredInputs, idField)
+		requiredInputs = removeFromSlice(requiredInputs, toCamelCase(idField))
 		requiredInputs = removeFromSlice(requiredInputs, idPathParam)
+		requiredInputs = removeFromSlice(requiredInputs, toCamelCase(idPathParam))
 	}
 	delete(outputs, "id")
 
@@ -975,19 +1025,20 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 	}
 
 	return ResourceDef{
-		Name:           g.name,
-		Token:          token,
-		CreatePath:     g.collectionPath,
-		CreateMethod:   "POST",
-		ReadPath:       g.itemPath,
-		UpdatePath:     updatePath,
-		UpdateMethod:   updateMethod,
-		DeletePath:     g.itemPath,
-		IDPathParam:    idPathParam,
-		IDField:        idField,
-		InputSchema:    inputs,
-		OutputSchema:   outputs,
-		RequiredInputs: requiredInputs,
+		Name:             g.name,
+		Token:            token,
+		CreatePath:       g.collectionPath,
+		CreateMethod:     "POST",
+		ReadPath:         g.itemPath,
+		UpdatePath:       updatePath,
+		UpdateMethod:     updateMethod,
+		DeletePath:       g.itemPath,
+		IDPathParam:      idPathParam,
+		IDField:          idField,
+		InputSchema:      inputs,
+		OutputSchema:     outputs,
+		RequiredInputs:   requiredInputs,
+		APIPropertyNames: apiPropertyNames,
 	}, true
 }
 
@@ -1058,7 +1109,7 @@ func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy) pschema.
 			tc.ensureType(name)
 			return pschema.PropertySpec{
 				TypeSpec: pschema.TypeSpec{
-					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, name),
+					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(name)),
 				},
 			}
 		}
@@ -1105,7 +1156,7 @@ func (tc *typeCollectorV3) arrayItemSpec(schema *highbase.Schema) pschema.TypeSp
 	if ref := itemProxy.GetReference(); ref != "" {
 		if name := extractComponentSchemaName(ref); name != "" {
 			tc.ensureType(name)
-			return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, name)}
+			return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(name))}
 		}
 	}
 	if s := itemProxy.Schema(); s != nil && len(s.Type) > 0 {
@@ -1118,7 +1169,7 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 	if tc.components == nil || tc.components.Schemas == nil {
 		return
 	}
-	token := fmt.Sprintf("%s:index:%s", tc.pkgName, schemaName)
+	token := fmt.Sprintf("%s:index:%s", tc.pkgName, toPascalCase(schemaName))
 	if _, exists := tc.types[token]; exists {
 		return
 	}
@@ -1133,7 +1184,7 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 	props := map[string]pschema.PropertySpec{}
 	if schema.Properties != nil {
 		for name, propProxy := range schema.Properties.FromOldest() {
-			props[name] = tc.convertProperty(propProxy)
+			props[toCamelCase(name)] = tc.convertProperty(propProxy)
 		}
 	}
 	tc.types[token] = pschema.ComplexTypeSpec{
