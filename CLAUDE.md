@@ -86,3 +86,55 @@ Resource names are derived by CamelCase-joining the **static** (non-`{param}`) s
 - Ordered maps are iterated with `.Oldest()` / `.Next()` (v2) or range over `.FromOldest()` (v3)
 - `SchemaProxy.GetReference()` returns the `$ref` string before resolution; call `.Schema()` to get the resolved schema
 - V2 definitions live under `#/definitions/`; V3 schemas live under `#/components/schemas/`
+
+## Integration tests
+
+The integration tests live under `integration-tests/` and consist of two parts:
+
+- `integration-tests/api/` — a Hono/Bun HTTP API that acts as the target for the provider
+- `integration-tests/provider/` — a Pulumi provider built from the API's OpenAPI spec
+- `integration-tests/pulumi/` — a Pulumi TypeScript program that exercises the provider end-to-end
+
+### Integration test API
+
+The API is built with [Hono](https://hono.dev) running on [Bun](https://bun.sh), backed by SQLite via [Drizzle ORM](https://orm.drizzle.team), and serves an OpenAPI spec at `/openapi` via [hono-openapi](https://hono-openapi.vercel.app).
+
+Resources exposed:
+
+| Route | Context param | Resource |
+|---|---|---|
+| `POST /users`, `GET/PATCH/DELETE /users/:userId` | — | User (name, email) |
+| `POST /organisations`, `GET/PATCH/DELETE /organisations/:organisationId` | — | Organisation (name) |
+| `POST /organisations/:organisationId/teams`, `GET/PATCH/DELETE /organisations/:organisationId/teams/:teamId` | `organisationId` | Team (name) |
+| `POST /organisations/:organisationId/teams/:teamId/members`, `GET/DELETE /organisations/:organisationId/teams/:teamId/members/:memberId` | `organisationId`, `teamId` | Member (userId) |
+
+### Running the integration tests
+
+```bash
+# In one terminal — start the API (blocks)
+cd integration-tests && make run-api
+
+# In another terminal — build provider, generate SDK, run pulumi up/destroy
+cd integration-tests && make test
+```
+
+Individual targets:
+
+```bash
+make install-api    # install Bun dependencies
+make generate       # generate Drizzle migration files from schema
+make migrate        # run DB migrations
+make build-provider # build the provider binary
+make schema         # extract schema.json from a running provider
+make sdk            # generate TypeScript SDK from schema
+make install-sdks   # install Pulumi program dependencies
+make clean          # remove all build artefacts including DB and node_modules
+```
+
+### Modifying the API schema
+
+If you change the Drizzle schema (`integration-tests/api/src/db/schema.ts`), regenerate and apply migrations:
+
+```bash
+cd integration-tests && make generate migrate
+```
