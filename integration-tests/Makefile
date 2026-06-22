@@ -2,7 +2,7 @@ PROVIDER_BINARY := bin/pulumi-resource-testapi
 SCHEMA_FILE     := schema.json
 SDK_DIR         := pulumi/sdk
 
-.PHONY: all setup install-api migrate build-provider schema sdk install-pulumi clean run-api test
+.PHONY: all setup install-api generate migrate build-provider schema sdk install-pulumi clean run-api test
 
 # Full one-shot setup (requires API to already be running for schema/sdk steps)
 all: build-provider schema sdk install-pulumi
@@ -15,8 +15,12 @@ install-api:
 run-api: install-api migrate
 	cd api && bun run start
 
+# Generate migration files from schema
+generate: install-api
+	cd api && bun run generate
+
 # Run DB migrations
-migrate: install-api
+migrate: generate
 	cd api && bun run migrate
 
 # Build the provider binary
