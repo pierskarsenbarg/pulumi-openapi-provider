@@ -327,6 +327,9 @@ func setID(outputs property.Map, idField, id string) property.Map {
 
 // handleCreate performs a create operation using the CRUD client.
 func handleCreate(ctx context.Context, res spec.ResourceDef, req p.CreateRequest, cfg *config.ProviderConfig) (p.CreateResponse, error) {
+	if req.DryRun {
+		return p.CreateResponse{ID: "", Properties: req.Properties}, nil
+	}
 	client := &crudClient{cfg: cfg}
 	id, outputs, err := client.create(ctx, res, req.Properties)
 	if err != nil {
