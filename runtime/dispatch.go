@@ -28,6 +28,9 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 
 		Configure: func(_ context.Context, req p.ConfigureRequest) error {
 			cfg.Apply(req)
+			if cfg.GetBaseURL() == "" {
+				return fmt.Errorf("baseUrl must be set: the spec contains no server URL and no baseUrl config value was provided")
+			}
 			return nil
 		},
 
