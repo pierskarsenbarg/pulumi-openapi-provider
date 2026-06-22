@@ -1,4 +1,6 @@
 PROVIDER_BINARY := bin/pulumi-resource-testapi
+
+export PATH := $(CURDIR)/bin:$(PATH)
 SCHEMA_FILE     := schema.json
 SDK_DIR         := pulumi/sdk
 
