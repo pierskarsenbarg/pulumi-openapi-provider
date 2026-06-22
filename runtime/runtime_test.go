@@ -452,3 +452,35 @@ func TestDo_EmptyBody(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+// --- Configure validation ---
+
+func TestConfigure_ErrorWhenBaseURLEmpty(t *testing.T) {
+	cfg := config.New(nil, "", nil)
+	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
+	err := provider.Configure(context.Background(), p.ConfigureRequest{})
+	if err == nil {
+		t.Fatal("expected error when baseUrl is empty, got nil")
+	}
+}
+
+func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
+	cfg := config.New(nil, "", nil)
+	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
+	args := property.NewMap(map[string]property.Value{
+		"baseUrl": property.New("https://api.example.com"),
+	})
+	err := provider.Configure(context.Background(), p.ConfigureRequest{Args: args})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConfigure_OKWhenBaseURLFromDefault(t *testing.T) {
+	cfg := config.New(nil, "https://api.example.com", nil)
+	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
+	err := provider.Configure(context.Background(), p.ConfigureRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
