@@ -68,6 +68,11 @@ jobs:
         timeout-minutes: 1
         run: until curl -sf http://localhost:3000/openapi > /dev/null; do sleep 1; done
 
+      - name: Build provider
+        run: |
+          make build-provider
+          echo "${{ github.workspace }}/integration-tests/bin" >> $GITHUB_PATH
+
       - name: Configure local Pulumi backend
         run: pulumi login --local
 
