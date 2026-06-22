@@ -176,3 +176,30 @@ openapi.Options{
 
 - [`examples/petstore`](examples/petstore) — provider built from the [Swagger Petstore](https://petstore.swagger.io) spec (Swagger 2.0)
 - [`examples/intercom`](examples/intercom) — provider built from the [Intercom API](https://github.com/intercom/Intercom-OpenAPI) spec (OAS3)
+
+## Integration tests
+
+End-to-end integration tests live in [`integration-tests/`](integration-tests/). They spin up a local HTTP API, build a provider from its OpenAPI spec, and run a Pulumi program against it.
+
+### API
+
+The test target is a [Hono](https://hono.dev) API running on [Bun](https://bun.sh), backed by SQLite via [Drizzle ORM](https://orm.drizzle.team). It exposes four resources that cover both flat and nested (context-param) path patterns:
+
+| Resource | Endpoints |
+|---|---|
+| User | `POST /users`, `GET/PATCH/DELETE /users/:userId` |
+| Organisation | `POST /organisations`, `GET/PATCH/DELETE /organisations/:organisationId` |
+| Team | `POST /organisations/:organisationId/teams`, `GET/PATCH/DELETE /organisations/:organisationId/teams/:teamId` |
+| Member | `POST /organisations/:organisationId/teams/:teamId/members`, `GET/DELETE …/members/:memberId` |
+
+The API serves its own OpenAPI spec at `GET /openapi`, which is what the provider consumes.
+
+### Running
+
+```bash
+# Terminal 1 — start the API
+cd integration-tests && make run-api
+
+# Terminal 2 — run the full test suite (pulumi up + destroy)
+cd integration-tests && make test
+```
