@@ -105,3 +105,12 @@ jobs:
 
       - name: Generate SDKs
         run: make gen-sdk-${{ matrix.exampleDir }}
+
+  check:
+    runs-on: ubuntu-latest
+    needs:
+      - integration-tests
+      - build-examples
+    steps:
+      - name: Check workflow
+        run: echo "All checks passed"
