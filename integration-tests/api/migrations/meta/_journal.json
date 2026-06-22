@@ -15,6 +15,13 @@
       "when": 1782133091897,
       "tag": "0001_fine_sharon_ventura",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782141159863,
+      "tag": "0002_narrow_thor",
+      "breakpoints": true
     }
   ]
 }
