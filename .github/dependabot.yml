@@ -4,6 +4,7 @@ updates:
     directories:
       - "/"
       - "/examples/*"
+      - "/integration-tests/provider"
     schedule:
       interval: "weekly"
       day: "thursday"
@@ -13,6 +14,17 @@ updates:
     ignore:
       - dependency-name: "github.com/pulumi/pulumi/pkg/v3"
       - dependency-name: "github.com/pulumi/pulumi/sdk/v3"
+
+  - package-ecosystem: "npm"
+    directories:
+      - "/integration-tests/api"
+      - "/integration-tests/pulumi"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "05:00"
+    assignees:
+      - "pierskarsenbarg"
 
   - package-ecosystem: "github-actions"
     directory: "/"
