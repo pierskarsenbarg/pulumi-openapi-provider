@@ -309,7 +309,12 @@ func toPascalCase(s string) string {
 }
 
 // toCamelCase converts a snake_case or kebab-case string to camelCase.
+// If the string contains no separators it is assumed to already be camelCase or
+// PascalCase and only the first character is lowercased.
 func toCamelCase(s string) string {
+	if !strings.ContainsAny(s, "-_") {
+		return lowercaseFirst(s)
+	}
 	words := splitWords(s)
 	if len(words) == 0 {
 		return s
