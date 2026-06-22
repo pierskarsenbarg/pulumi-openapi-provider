@@ -24,7 +24,7 @@ const errorResponse = v.object({ error: v.string() });
 export const usersRouter = new Hono();
 
 usersRouter.post(
-  "/",
+  "/:teamId/users",
   describeRoute({
     tags: ["users"],
     summary: "Create a user within a team",
@@ -58,7 +58,7 @@ usersRouter.post(
 );
 
 usersRouter.get(
-  "/:userId",
+  "/:teamId/users/:userId",
   describeRoute({
     tags: ["users"],
     summary: "Get a user",
@@ -84,7 +84,7 @@ usersRouter.get(
 );
 
 usersRouter.patch(
-  "/:userId",
+  "/:teamId/users/:userId",
   describeRoute({
     tags: ["users"],
     summary: "Update a user",
@@ -114,7 +114,7 @@ usersRouter.patch(
 );
 
 usersRouter.delete(
-  "/:userId",
+  "/:teamId/users/:userId",
   describeRoute({
     tags: ["users"],
     summary: "Delete a user",

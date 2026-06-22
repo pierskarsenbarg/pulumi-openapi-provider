@@ -8,7 +8,7 @@ const app = new Hono();
 
 app.route("/organisations", organisationsRouter);
 app.route("/organisations/:organisationId/teams", teamsRouter);
-app.route("/organisations/:organisationId/teams/:teamId/users", usersRouter);
+app.route("/organisations/:organisationId/teams", usersRouter);
 
 app.get(
   "/openapi",
