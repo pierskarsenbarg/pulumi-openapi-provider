@@ -24,9 +24,51 @@ jobs:
       - name: Test
         run: make test
 
-  release:
+  integration-tests:
     runs-on: ubuntu-latest
     needs: test
+    defaults:
+      run:
+        working-directory: integration-tests
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: integration-tests/provider/go.mod
+          cache: true
+          cache-dependency-path: integration-tests/provider/go.sum
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: pulumi/actions@v7
+        with:
+          pulumi-version: latest
+
+      - name: Install API dependencies
+        run: make install-api
+
+      - name: Run database migrations
+        run: make migrate
+
+      - name: Start API in background
+        run: cd api && bun run src/index.ts &
+
+      - name: Wait for API to be ready
+        timeout-minutes: 1
+        run: until curl -sf http://localhost:3000/openapi > /dev/null; do sleep 1; done
+
+      - name: Configure local Pulumi backend
+        run: pulumi login --local
+
+      - name: Run integration tests
+        run: make test
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ""
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [test, integration-tests]
     steps:
       - uses: actions/checkout@v7
         with:
