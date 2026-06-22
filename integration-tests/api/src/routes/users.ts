@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { describeRoute } from "hono-openapi";
-import { resolver, validator } from "hono-openapi/valibot";
+import { resolver, validator, describeRoute } from "hono-openapi";
 import * as v from "valibot";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
@@ -41,8 +40,11 @@ usersRouter.post(
       .insert(users)
       .values({ name: body.name, email: body.email })
       .returning();
-    return c.json({ ...user, createdAt: user.createdAt?.toISOString() ?? null }, 201);
-  }
+    return c.json(
+      { ...user, createdAt: user.createdAt?.toISOString() ?? null },
+      201,
+    );
+  },
 );
 
 usersRouter.get(
@@ -67,8 +69,11 @@ usersRouter.get(
       where: eq(users.id, userId),
     });
     if (!user) return c.json({ error: "User not found" }, 404);
-    return c.json({ ...user, createdAt: user.createdAt?.toISOString() ?? null });
-  }
+    return c.json({
+      ...user,
+      createdAt: user.createdAt?.toISOString() ?? null,
+    });
+  },
 );
 
 usersRouter.patch(
@@ -97,8 +102,11 @@ usersRouter.patch(
       .where(eq(users.id, userId))
       .returning();
     if (!user) return c.json({ error: "User not found" }, 404);
-    return c.json({ ...user, createdAt: user.createdAt?.toISOString() ?? null });
-  }
+    return c.json({
+      ...user,
+      createdAt: user.createdAt?.toISOString() ?? null,
+    });
+  },
 );
 
 usersRouter.delete(
@@ -116,8 +124,11 @@ usersRouter.delete(
   }),
   async (c) => {
     const { userId } = c.req.param();
-    const result = await db.delete(users).where(eq(users.id, userId)).returning();
+    const result = await db
+      .delete(users)
+      .where(eq(users.id, userId))
+      .returning();
     if (result.length === 0) return c.json({ error: "User not found" }, 404);
     return new Response(null, { status: 204 });
-  }
+  },
 );

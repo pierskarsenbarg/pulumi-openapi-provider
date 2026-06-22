@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { openAPISpecs } from "hono-openapi";
+import { openAPIRouteHandler } from "hono-openapi";
 import { organisationsRouter } from "./routes/organisations";
 import { teamsRouter } from "./routes/teams";
 import { usersRouter } from "./routes/users";
@@ -14,7 +14,7 @@ app.route("/organisations/:organisationId/teams", membersRouter);
 
 app.get(
   "/openapi",
-  openAPISpecs(app, {
+  openAPIRouteHandler(app, {
     documentation: {
       info: {
         title: "Integration Test API",
@@ -23,7 +23,7 @@ app.get(
       },
       servers: [{ url: `http://localhost:${process.env.PORT ?? 3000}` }],
     },
-  })
+  }),
 );
 
 const port = Number(process.env.PORT ?? 3000);
