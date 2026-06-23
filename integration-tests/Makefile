@@ -9,7 +9,7 @@ export PATH := $(CURDIR)/code-provider/bin:$(PATH)
 
 .PHONY: all install-api generate migrate run-api \
         build-code-provider schema sdk install-code-sdks test-code-provider \
-        build-param-provider install-param-plugin test-parameterized-provider \
+        install-param-plugin test-parameterized-provider \
         clean-param-sdk test-parameterized-provider-from-file \
         test clean
 
@@ -51,10 +51,10 @@ test-code-provider: install-code-sdks
 
 # ─── Parameterized provider ───────────────────────────────────────────────────
 
-build-param-provider:
+$(PARAM_BINARY):
 	cd .. && go build -o bin/pulumi-resource-openapi-provider ./cmd/openapi-provider
 
-install-param-plugin: build-param-provider
+install-param-plugin: $(PARAM_BINARY)
 	pulumi plugin install resource openapi-provider 0.1.0 --file $(PARAM_BINARY)
 
 test-parameterized-provider: install-param-plugin
@@ -71,7 +71,7 @@ clean-param-sdk:
 		$(PARAM_PULUMI_DIR)/node_modules \
 		$(PARAM_PULUMI_DIR)/bin
 
-test-parameterized-provider-from-file: clean-param-sdk
+test-parameterized-provider-from-file: install-param-plugin clean-param-sdk
 	curl -sf http://localhost:3000/openapi -o $(PARAM_SPEC_FILE)
 	cd $(PARAM_PULUMI_DIR) && pulumi package add openapi-provider ../openapi.json
 	cd $(PARAM_PULUMI_DIR) && pulumi install
