@@ -130,4 +130,4 @@ require (
 	lukechampine.com/frand v1.5.1 // indirect
 )
 
-replace github.com/pierskarsenbarg/pulumi-openapi-provider => ../../
+replace github.com/pierskarsenbarg/pulumi-openapi-provider => ../../../

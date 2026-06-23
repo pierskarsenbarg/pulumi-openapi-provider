@@ -24,7 +24,7 @@ jobs:
       - name: Test
         run: make test
 
-  integration-tests:
+  code-provider-integration-tests:
     runs-on: ubuntu-latest
     needs: test
     defaults:
@@ -35,9 +35,9 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: integration-tests/provider/go.mod
+          go-version-file: integration-tests/code-provider/provider/go.mod
           cache: true
-          cache-dependency-path: integration-tests/provider/go.sum
+          cache-dependency-path: integration-tests/code-provider/provider/go.sum
 
       - uses: oven-sh/setup-bun@v2
 
@@ -61,14 +61,55 @@ jobs:
       - name: Configure local Pulumi backend
         run: pulumi login --local
 
-      - name: Run integration tests
-        run: make test
+      - name: Run code provider integration tests
+        run: make test-code-provider
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ""
+
+  parameterized-provider-integration-tests:
+    runs-on: ubuntu-latest
+    needs: test
+    defaults:
+      run:
+        working-directory: integration-tests
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: pulumi/actions@v7
+        with:
+          pulumi-version: latest
+
+      - name: Install API dependencies
+        run: make install-api
+
+      - name: Run database migrations
+        run: make migrate
+
+      - name: Start API in background
+        run: cd api && bun run src/index.ts &
+
+      - name: Wait for API to be ready
+        timeout-minutes: 1
+        run: until curl -sf http://localhost:3000/openapi > /dev/null; do sleep 1; done
+
+      - name: Configure local Pulumi backend
+        run: pulumi login --local
+
+      - name: Run parameterized provider integration tests
+        run: make test-parameterized-provider
         env:
           PULUMI_CONFIG_PASSPHRASE: ""
 
   release:
     runs-on: ubuntu-latest
-    needs: [test, integration-tests]
+    needs: [test, code-provider-integration-tests, parameterized-provider-integration-tests]
     steps:
       - uses: actions/checkout@v7
         with:
