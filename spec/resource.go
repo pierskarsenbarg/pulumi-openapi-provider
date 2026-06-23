@@ -191,16 +191,14 @@ func extractBaseURLV2(swagger *v2high.Swagger) string {
 		return ""
 	}
 	scheme := "https"
-	if len(swagger.Schemes) > 0 {
-		hasHTTPS := false
-		for _, s := range swagger.Schemes {
-			if s == "https" {
-				hasHTTPS = true
-				break
-			}
+	for _, s := range swagger.Schemes {
+		lower := strings.ToLower(s)
+		if lower == "https" {
+			scheme = "https"
+			break
 		}
-		if !hasHTTPS {
-			scheme = swagger.Schemes[0]
+		if lower == "http" {
+			scheme = "http"
 		}
 	}
 	base := swagger.BasePath

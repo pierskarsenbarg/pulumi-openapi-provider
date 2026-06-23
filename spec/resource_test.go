@@ -2,6 +2,7 @@ package spec_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
@@ -782,6 +783,23 @@ func TestBaseURL_V2_HTTPSPreferredOverHTTP(t *testing.T) {
 	result := loadInline(t, swaggerHTTPAndHTTPS)
 	if result.DefaultBaseURL != "https://api.example.com" {
 		t.Errorf("DefaultBaseURL = %q, want https://api.example.com", result.DefaultBaseURL)
+	}
+}
+
+func TestBaseURL_V2_SchemesCaseInsensitive(t *testing.T) {
+	spec := strings.ReplaceAll(swaggerHTTPOnly, `"schemes": ["http"]`, `"schemes": ["HTTP"]`)
+	result := loadInline(t, spec)
+	if result.DefaultBaseURL != "http://api.example.com" {
+		t.Errorf("DefaultBaseURL = %q, want http://api.example.com for uppercase scheme", result.DefaultBaseURL)
+	}
+}
+
+func TestBaseURL_V2_NonHTTPSchemeIgnored(t *testing.T) {
+	// "ws" is valid in Swagger 2.0 but not usable by the HTTP client; should default to https.
+	spec := strings.ReplaceAll(swaggerHTTPOnly, `"schemes": ["http"]`, `"schemes": ["ws"]`)
+	result := loadInline(t, spec)
+	if result.DefaultBaseURL != "https://api.example.com" {
+		t.Errorf("DefaultBaseURL = %q, want https://api.example.com when only non-HTTP schemes present", result.DefaultBaseURL)
 	}
 }
 
