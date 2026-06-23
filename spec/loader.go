@@ -30,11 +30,7 @@ func loadFromURL(url string) (libopenapi.Document, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading spec response body: %w", err)
 	}
-	doc, err := libopenapi.NewDocument(data)
-	if err != nil {
-		return nil, fmt.Errorf("parsing spec: %w", err)
-	}
-	return doc, nil
+	return loadFromBytes(data)
 }
 
 func loadFromFile(path string) (libopenapi.Document, error) {
@@ -42,9 +38,18 @@ func loadFromFile(path string) (libopenapi.Document, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading spec file %s: %w", path, err)
 	}
+	return loadFromBytes(data)
+}
+
+func loadFromBytes(data []byte) (libopenapi.Document, error) {
 	doc, err := libopenapi.NewDocument(data)
 	if err != nil {
 		return nil, fmt.Errorf("parsing spec: %w", err)
 	}
-	return doc, nil
+	switch doc.GetSpecInfo().SpecFormat {
+	case "oas2", "oas3", "oas3_1", "oas3_2":
+		return doc, nil
+	default:
+		return nil, fmt.Errorf("not a recognised OpenAPI/Swagger spec (spec format %q)", doc.GetSpecInfo().SpecFormat)
+	}
 }
