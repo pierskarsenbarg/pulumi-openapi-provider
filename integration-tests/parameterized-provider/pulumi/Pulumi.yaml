@@ -1,0 +1,3 @@
+name: testapi-param-integration
+runtime: nodejs
+description: Parameterized provider integration tests for pulumi-openapi-provider

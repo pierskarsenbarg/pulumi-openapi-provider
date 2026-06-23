@@ -1,0 +1,14 @@
+{
+  "name": "testapi-param-integration-pulumi",
+  "private": true,
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@types/node": "^26.0.0"
+  }
+}

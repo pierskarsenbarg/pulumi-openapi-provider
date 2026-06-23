@@ -126,11 +126,17 @@ Resource names are derived by CamelCase-joining the **static** (non-`{param}`) s
 
 ## Integration tests
 
-The integration tests live under `integration-tests/` and consist of two parts:
+The integration tests live under `integration-tests/` and are split into two independent suites that share a single API:
 
-- `integration-tests/api/` — a Hono/Bun HTTP API that acts as the target for the provider
-- `integration-tests/provider/` — a Pulumi provider built from the API's OpenAPI spec
-- `integration-tests/pulumi/` — a Pulumi TypeScript program that exercises the provider end-to-end
+```
+integration-tests/
+├── api/                          # shared Hono/Bun HTTP API
+├── code-provider/
+│   ├── provider/                 # Go binary built from the spec at compile time
+│   └── pulumi/                   # Pulumi TypeScript program for code-provider tests
+└── parameterized-provider/
+    └── pulumi/                   # Pulumi TypeScript program for parameterized-provider tests
+```
 
 ### Integration test API
 
@@ -145,27 +151,63 @@ Resources exposed:
 | `POST /organisations/:organisationId/teams`, `GET/PATCH/DELETE /organisations/:organisationId/teams/:teamId` | `organisationId` | Team (name) |
 | `POST /organisations/:organisationId/teams/:teamId/members`, `GET/DELETE /organisations/:organisationId/teams/:teamId/members/:memberId` | `organisationId`, `teamId` | Member (userId) |
 
-### Running the integration tests
+### Code-provider tests
+
+Tests library mode: a Go binary with the spec URL baked in at compile time.
 
 ```bash
 # In one terminal — start the API (blocks)
 cd integration-tests && make run-api
 
-# In another terminal — build provider, generate SDK, run pulumi up/destroy
-cd integration-tests && make test
+# In another terminal
+cd integration-tests && make test-code-provider
 ```
 
 Individual targets:
 
 ```bash
-make install-api    # install Bun dependencies
-make generate       # generate Drizzle migration files from schema
-make migrate        # run DB migrations
-make build-provider # build the provider binary
-make schema         # extract schema.json from a running provider
-make sdk            # generate TypeScript SDK from schema
-make install-sdks   # install Pulumi program dependencies
-make clean          # remove all build artefacts including DB and node_modules
+make build-code-provider  # compile Go binary → code-provider/bin/pulumi-resource-testapi
+make schema               # extract schema.json from the running provider
+make sdk                  # generate TypeScript SDK from schema
+make install-code-sdks    # install Pulumi program dependencies
+```
+
+### Parameterized-provider tests
+
+Tests parameterized binary mode: the root `pulumi-resource-openapi-provider` binary is installed as a Pulumi plugin, then `pulumi package add` is used to fetch the spec at runtime and generate a typed SDK on the fly.
+
+```bash
+# In one terminal — start the API (blocks)
+cd integration-tests && make run-api
+
+# In another terminal
+cd integration-tests && make test-parameterized-provider
+```
+
+What `make test-parameterized-provider` does:
+1. Builds `bin/pulumi-resource-openapi-provider` from `cmd/openapi-provider/` in the repo root
+2. Installs it as a Pulumi plugin (`pulumi plugin install resource openapi-provider 0.1.0`)
+3. Runs `pulumi package add openapi-provider http://localhost:3000/openapi` to fetch the spec and generate a typed SDK (package name `integration-test-api`, derived from the API title)
+4. Runs `pulumi install` to install the generated SDK
+5. Runs `pulumi up` / `pulumi destroy` and removes the stack
+
+### Running both suites
+
+```bash
+# In one terminal — start the API
+cd integration-tests && make run-api
+
+# In another terminal — run both suites in sequence
+cd integration-tests && make test
+```
+
+### Shared API targets
+
+```bash
+make install-api  # install Bun dependencies
+make generate     # generate Drizzle migration files from schema
+make migrate      # run DB migrations
+make clean        # remove all build artefacts including DB and node_modules
 ```
 
 ### Modifying the API schema
