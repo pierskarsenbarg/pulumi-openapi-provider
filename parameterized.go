@@ -40,7 +40,7 @@ func RunParameterizedProvider(ctx context.Context, version string) error {
 // paramBlob is serialised into ParameterizationSpec.Parameter so the blob is embedded
 // in generated SDKs and echoed back in ParameterizeRequestValue.Value on subsequent runs.
 type paramBlob struct {
-	SpecURL string `json:"specURL"`
+	Spec string `json:"spec"`
 	// BaseURL holds the --base-url flag value if it was explicitly supplied; empty otherwise.
 	BaseURL string `json:"baseURL,omitempty"`
 }
@@ -60,7 +60,7 @@ type parameterizedProvider struct {
 }
 
 func (pp *parameterizedProvider) parameterize(_ context.Context, req p.ParameterizeRequest) (p.ParameterizeResponse, error) {
-	var specURL, cliBaseURL string
+	var specSrc, cliBaseURL string
 
 	switch {
 	case req.Args != nil:
@@ -68,7 +68,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		if err != nil {
 			return p.ParameterizeResponse{}, err
 		}
-		specURL = pa.specURL
+		specSrc = pa.spec
 		cliBaseURL = pa.baseURL
 
 	case req.Value != nil:
@@ -76,14 +76,14 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		if err := json.Unmarshal(req.Value.Value, &blob); err != nil {
 			return p.ParameterizeResponse{}, fmt.Errorf("decoding parameterization blob: %w", err)
 		}
-		specURL = blob.SpecURL
+		specSrc = blob.Spec
 		cliBaseURL = blob.BaseURL
 
 	default:
 		return p.ParameterizeResponse{}, fmt.Errorf("Parameterize: neither Args nor Value provided")
 	}
 
-	doc, err := spec.Load(specURL, "")
+	doc, err := spec.LoadSpec(specSrc)
 	if err != nil {
 		return p.ParameterizeResponse{}, fmt.Errorf("loading spec: %w", err)
 	}
@@ -97,7 +97,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		return p.ParameterizeResponse{}, fmt.Errorf(
 			"cannot determine base URL from spec; use --base-url to specify it:\n"+
 				"  pulumi package add openapi-provider '%s' --base-url=https://api.example.com",
-			specURL,
+			specSrc,
 		)
 	}
 
@@ -130,7 +130,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 	cfg := config.New(nil, baseURL, convertAuthSchemes(result.AuthSchemes))
 	inner := runtime.Build(pkgName, pkgVersion.String(), result, cfg)
 
-	blob, err := json.Marshal(paramBlob{SpecURL: specURL, BaseURL: cliBaseURL})
+	blob, err := json.Marshal(paramBlob{Spec: specSrc, BaseURL: cliBaseURL})
 	if err != nil {
 		return p.ParameterizeResponse{}, fmt.Errorf("serialising parameterization blob: %w", err)
 	}
@@ -239,17 +239,17 @@ func (pp *parameterizedProvider) delete(_ context.Context, req p.DeleteRequest) 
 
 // paramArgs holds the parsed arguments from a Parameterize Args call.
 type paramArgs struct {
-	specURL string
+	spec    string
 	baseURL string
 }
 
 func parseParamArgs(args []string) (paramArgs, error) {
 	if len(args) == 0 {
 		return paramArgs{}, fmt.Errorf(
-			"usage: pulumi package add openapi-provider <spec-url> [--base-url=<url>]",
+			"usage: pulumi package add openapi-provider <spec-url-or-path> [--base-url=<url>]",
 		)
 	}
-	pa := paramArgs{specURL: args[0]}
+	pa := paramArgs{spec: args[0]}
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 		switch {

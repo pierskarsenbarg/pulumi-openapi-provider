@@ -53,27 +53,53 @@ func TestNormalizeVersion(t *testing.T) {
 
 func TestParseParamArgs(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		wantURL string
+		name     string
+		args     []string
+		wantSpec string
 		wantBase string
-		wantErr bool
+		wantErr  bool
 	}{
 		{
-			name:    "url only",
-			args:    []string{"https://api.example.com/openapi.json"},
-			wantURL: "https://api.example.com/openapi.json",
+			name:     "https url only",
+			args:     []string{"https://api.example.com/openapi.json"},
+			wantSpec: "https://api.example.com/openapi.json",
+		},
+		{
+			name:     "http url only",
+			args:     []string{"http://localhost:3000/openapi.json"},
+			wantSpec: "http://localhost:3000/openapi.json",
+		},
+		{
+			name:     "absolute file path",
+			args:     []string{"/path/to/spec.yaml"},
+			wantSpec: "/path/to/spec.yaml",
+		},
+		{
+			name:     "relative file path",
+			args:     []string{"./spec.yaml"},
+			wantSpec: "./spec.yaml",
+		},
+		{
+			name:     "file:// uri",
+			args:     []string{"file:///path/to/spec.yaml"},
+			wantSpec: "file:///path/to/spec.yaml",
 		},
 		{
 			name:     "url and --base-url= form",
 			args:     []string{"https://api.example.com/openapi.json", "--base-url=https://api.example.com"},
-			wantURL:  "https://api.example.com/openapi.json",
+			wantSpec: "https://api.example.com/openapi.json",
 			wantBase: "https://api.example.com",
 		},
 		{
 			name:     "url and --base-url space form",
 			args:     []string{"https://api.example.com/openapi.json", "--base-url", "https://api.example.com"},
-			wantURL:  "https://api.example.com/openapi.json",
+			wantSpec: "https://api.example.com/openapi.json",
+			wantBase: "https://api.example.com",
+		},
+		{
+			name:     "file path and --base-url",
+			args:     []string{"/path/to/spec.yaml", "--base-url=https://api.example.com"},
+			wantSpec: "/path/to/spec.yaml",
 			wantBase: "https://api.example.com",
 		},
 		{
@@ -91,8 +117,8 @@ func TestParseParamArgs(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if got.specURL != tc.wantURL {
-				t.Errorf("specURL = %q, want %q", got.specURL, tc.wantURL)
+			if got.spec != tc.wantSpec {
+				t.Errorf("spec = %q, want %q", got.spec, tc.wantSpec)
 			}
 			if got.baseURL != tc.wantBase {
 				t.Errorf("baseURL = %q, want %q", got.baseURL, tc.wantBase)
