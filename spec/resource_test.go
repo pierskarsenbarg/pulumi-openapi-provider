@@ -622,3 +622,186 @@ func TestBuildSchema_Petstore(t *testing.T) {
 	t.Logf("schema length: %d bytes", len(schema))
 	t.Logf("schema preview: %.200s...", schema)
 }
+
+// --- Base URL derivation ---
+
+const swaggerNoHost = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "paths": {
+    "/widgets": {
+      "post": {
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {"type": "object", "properties": {"name": {"type": "string"}}}
+  }
+}`
+
+const swaggerHTTPOnly = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "schemes": ["http"],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {"type": "object", "properties": {"name": {"type": "string"}}}
+  }
+}`
+
+const swaggerHTTPAndHTTPS = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "schemes": ["http", "https"],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {"type": "object", "properties": {"name": {"type": "string"}}}
+  }
+}`
+
+const swaggerWithBasePath = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "basePath": "/v2",
+  "schemes": ["https"],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {"type": "object", "properties": {"name": {"type": "string"}}}
+  }
+}`
+
+const oas3NoServers = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "paths": {
+    "/widgets": {
+      "post": {
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      },
+      "delete": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {"type": "object", "properties": {"name": {"type": "string"}}}
+    }
+  }
+}`
+
+func TestBaseURL_V2_NoHost_ReturnsEmpty(t *testing.T) {
+	result := loadInline(t, swaggerNoHost)
+	if result.DefaultBaseURL != "" {
+		t.Errorf("DefaultBaseURL = %q, want empty string when spec has no host", result.DefaultBaseURL)
+	}
+}
+
+func TestBaseURL_V2_HTTPOnly(t *testing.T) {
+	result := loadInline(t, swaggerHTTPOnly)
+	if result.DefaultBaseURL != "http://api.example.com" {
+		t.Errorf("DefaultBaseURL = %q, want http://api.example.com", result.DefaultBaseURL)
+	}
+}
+
+func TestBaseURL_V2_HTTPSPreferredOverHTTP(t *testing.T) {
+	result := loadInline(t, swaggerHTTPAndHTTPS)
+	if result.DefaultBaseURL != "https://api.example.com" {
+		t.Errorf("DefaultBaseURL = %q, want https://api.example.com", result.DefaultBaseURL)
+	}
+}
+
+func TestBaseURL_V2_HostWithBasePath(t *testing.T) {
+	result := loadInline(t, swaggerWithBasePath)
+	if result.DefaultBaseURL != "https://api.example.com/v2" {
+		t.Errorf("DefaultBaseURL = %q, want https://api.example.com/v2", result.DefaultBaseURL)
+	}
+}
+
+func TestBaseURL_V3_UsesFirstServerURL(t *testing.T) {
+	result := loadInline(t, minimalOAS3)
+	if result.DefaultBaseURL != "https://api.example.com" {
+		t.Errorf("DefaultBaseURL = %q, want https://api.example.com", result.DefaultBaseURL)
+	}
+}
+
+func TestBaseURL_V3_NoServers_ReturnsEmpty(t *testing.T) {
+	result := loadInline(t, oas3NoServers)
+	if result.DefaultBaseURL != "" {
+		t.Errorf("DefaultBaseURL = %q, want empty string when spec has no servers", result.DefaultBaseURL)
+	}
+}
