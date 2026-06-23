@@ -50,16 +50,12 @@ type DiscoveryResult struct {
 }
 
 // BaseURL returns the base URL declared in the spec, or empty string if the spec
-// provides no meaningful server address. Unlike the internal helpers, it does not
-// fall back to "localhost" for Swagger 2.0 specs that omit the host field.
+// provides no meaningful server address.
 func BaseURL(doc libopenapi.Document) string {
 	info := doc.GetSpecInfo()
 	if info.SpecFormat == "oas2" {
 		model, err := doc.BuildV2Model()
 		if err != nil || model == nil {
-			return ""
-		}
-		if model.Model.Host == "" {
 			return ""
 		}
 		return extractBaseURLV2(&model.Model)
@@ -190,19 +186,20 @@ func extractAuthSchemesV2(swagger *v2high.Swagger) []AuthScheme {
 }
 
 func extractBaseURLV2(swagger *v2high.Swagger) string {
-	scheme := "https"
-	if len(swagger.Schemes) > 0 {
-		for _, s := range swagger.Schemes {
-			if s == "https" {
-				scheme = "https"
-				break
-			}
-			scheme = s
-		}
-	}
 	host := swagger.Host
 	if host == "" {
-		host = "localhost"
+		return ""
+	}
+	scheme := "https"
+	for _, s := range swagger.Schemes {
+		lower := strings.ToLower(s)
+		if lower == "https" {
+			scheme = "https"
+			break
+		}
+		if lower == "http" {
+			scheme = "http"
+		}
 	}
 	base := swagger.BasePath
 	if base == "/" {

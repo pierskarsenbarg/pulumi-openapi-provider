@@ -78,6 +78,10 @@ func (c *crudClient) del(ctx context.Context, res spec.ResourceDef, id string, s
 
 // request performs an HTTP call with a JSON body and returns the decoded response.
 func (c *crudClient) request(ctx context.Context, method, path string, body map[string]interface{}) (map[string]interface{}, error) {
+	if c.cfg.GetBaseURL() == "" {
+		return nil, fmt.Errorf("baseUrl is not set: provide it via provider config or ensure the spec declares a server URL")
+	}
+
 	var buf *bytes.Buffer
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -105,6 +109,10 @@ func (c *crudClient) request(ctx context.Context, method, path string, body map[
 
 // requestNoBody performs an HTTP call without a request body.
 func (c *crudClient) requestNoBody(ctx context.Context, method, path string) (map[string]interface{}, error) {
+	if c.cfg.GetBaseURL() == "" {
+		return nil, fmt.Errorf("baseUrl is not set: provide it via provider config or ensure the spec declares a server URL")
+	}
+
 	url := c.cfg.GetBaseURL() + path
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {

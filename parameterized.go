@@ -89,16 +89,10 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 	}
 
 	// Resolve base URL: CLI flag takes precedence over spec-declared server.
+	// An empty result is allowed — the user can supply baseUrl via provider config.
 	baseURL := cliBaseURL
 	if baseURL == "" {
 		baseURL = spec.BaseURL(doc)
-	}
-	if baseURL == "" {
-		return p.ParameterizeResponse{}, fmt.Errorf(
-			"cannot determine base URL from spec; use --base-url to specify it:\n"+
-				"  pulumi package add openapi-provider '%s' --base-url=https://api.example.com",
-			specSrc,
-		)
 	}
 
 	// Derive package name and version from spec metadata.

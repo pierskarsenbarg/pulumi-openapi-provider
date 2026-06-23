@@ -57,6 +57,22 @@ func TestApply_BaseURL_NotOverriddenByEmpty(t *testing.T) {
 	}
 }
 
+func TestApply_BaseURL_WhitespaceIsIgnored(t *testing.T) {
+	cfg := config.New(nil, "https://default.example.com", nil)
+	cfg.Apply(req(map[string]string{"baseUrl": "   "}))
+	if cfg.GetBaseURL() != "https://default.example.com" {
+		t.Errorf("BaseURL = %q, want default to be preserved when config value is whitespace-only", cfg.GetBaseURL())
+	}
+}
+
+func TestApply_BaseURL_Trimmed(t *testing.T) {
+	cfg := config.New(nil, "", nil)
+	cfg.Apply(req(map[string]string{"baseUrl": "  https://api.example.com  "}))
+	if cfg.GetBaseURL() != "https://api.example.com" {
+		t.Errorf("BaseURL = %q, want leading/trailing whitespace stripped", cfg.GetBaseURL())
+	}
+}
+
 func TestApply_BaseURL_FromVariables(t *testing.T) {
 	cfg := config.New(nil, "", nil)
 	cfg.Apply(p.ConfigureRequest{

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	p "github.com/pulumi/pulumi-go-provider"
@@ -429,6 +430,31 @@ func TestCRUD_Delete_NotFound_IsOK(t *testing.T) {
 	}
 }
 
+func TestCRUD_Create_EmptyBaseURL(t *testing.T) {
+	cfg := config.New(nil, "", nil)
+	client := &crudClient{cfg: cfg}
+	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
+	_, _, err := client.create(context.Background(), testResource(), inputs)
+	if err == nil {
+		t.Fatal("expected error when baseUrl is empty")
+	}
+	if !strings.Contains(err.Error(), "baseUrl is not set") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestCRUD_Read_EmptyBaseURL(t *testing.T) {
+	cfg := config.New(nil, "", nil)
+	client := &crudClient{cfg: cfg}
+	_, err := client.read(context.Background(), testResource(), "42", nil)
+	if err == nil {
+		t.Fatal("expected error when baseUrl is empty")
+	}
+	if !strings.Contains(err.Error(), "baseUrl is not set") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
 func TestDo_NonSuccessStatus(t *testing.T) {
 	_, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -543,16 +569,7 @@ func TestHandleCheck_ContextParamRequired(t *testing.T) {
 	}
 }
 
-// --- Configure validation ---
-
-func TestConfigure_ErrorWhenBaseURLEmpty(t *testing.T) {
-	cfg := config.New(nil, "", nil)
-	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
-	err := provider.Configure(context.Background(), p.ConfigureRequest{})
-	if err == nil {
-		t.Fatal("expected error when baseUrl is empty, got nil")
-	}
-}
+// --- Configure ---
 
 func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
 	cfg := config.New(nil, "", nil)

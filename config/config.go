@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/base64"
 	"net/http"
+	"strings"
 	"sync"
 
 	p "github.com/pulumi/pulumi-go-provider"
@@ -41,8 +42,10 @@ func New(client *http.Client, defaultBaseURL string, schemes []AuthScheme) *Prov
 func (c *ProviderConfig) Apply(req p.ConfigureRequest) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if v, ok := req.Args.GetOk("baseUrl"); ok && v.IsString() && v.AsString() != "" {
-		c.BaseURL = v.AsString()
+	if v, ok := req.Args.GetOk("baseUrl"); ok && v.IsString() {
+		if trimmed := strings.TrimSpace(v.AsString()); trimmed != "" {
+			c.BaseURL = trimmed
+		}
 	}
 
 	if len(c.authSchemes) == 0 {
