@@ -49,6 +49,28 @@ type DiscoveryResult struct {
 	AuthSchemes    []AuthScheme
 }
 
+// BaseURL returns the base URL declared in the spec, or empty string if the spec
+// provides no meaningful server address. Unlike the internal helpers, it does not
+// fall back to "localhost" for Swagger 2.0 specs that omit the host field.
+func BaseURL(doc libopenapi.Document) string {
+	info := doc.GetSpecInfo()
+	if info.SpecFormat == "oas2" {
+		model, err := doc.BuildV2Model()
+		if err != nil || model == nil {
+			return ""
+		}
+		if model.Model.Host == "" {
+			return ""
+		}
+		return extractBaseURLV2(&model.Model)
+	}
+	model, err := doc.BuildV3Model()
+	if err != nil || model == nil {
+		return ""
+	}
+	return extractBaseURLV3(&model.Model)
+}
+
 // Discover identifies Pulumi resources from an OpenAPI document using path conventions.
 // Supports both Swagger 2.0 and OpenAPI 3.x specs.
 func Discover(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride) (DiscoveryResult, error) {

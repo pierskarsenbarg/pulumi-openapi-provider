@@ -1,5 +1,6 @@
 # Binaries
 pulumi-resource-*
+bin/
 
 # Go build cache and test artifacts
 *.test
