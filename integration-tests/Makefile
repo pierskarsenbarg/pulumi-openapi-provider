@@ -71,7 +71,7 @@ clean-param-sdk:
 		$(PARAM_PULUMI_DIR)/node_modules \
 		$(PARAM_PULUMI_DIR)/bin
 
-test-parameterized-provider-from-file: install-param-plugin clean-param-sdk
+test-parameterized-provider-from-file: clean-param-sdk
 	curl -sf http://localhost:3000/openapi -o $(PARAM_SPEC_FILE)
 	cd $(PARAM_PULUMI_DIR) && pulumi package add openapi-provider ../openapi.json
 	cd $(PARAM_PULUMI_DIR) && pulumi install
