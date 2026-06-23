@@ -3,12 +3,14 @@ CODE_SCHEMA     := code-provider/schema.json
 CODE_SDK_DIR    := code-provider/pulumi/sdk
 PARAM_BINARY    := ../bin/pulumi-resource-openapi-provider
 PARAM_PULUMI_DIR := parameterized-provider/pulumi
+PARAM_SPEC_FILE := parameterized-provider/openapi.json
 
 export PATH := $(CURDIR)/code-provider/bin:$(PATH)
 
 .PHONY: all install-api generate migrate run-api \
         build-code-provider schema sdk install-code-sdks test-code-provider \
         build-param-provider install-param-plugin test-parameterized-provider \
+        clean-param-sdk test-parameterized-provider-from-file \
         test clean
 
 # ─── API (shared) ─────────────────────────────────────────────────────────────
@@ -63,9 +65,25 @@ test-parameterized-provider: install-param-plugin
 	cd $(PARAM_PULUMI_DIR) && pulumi destroy --yes --non-interactive
 	cd $(PARAM_PULUMI_DIR) && pulumi stack rm test --yes --non-interactive
 
+clean-param-sdk:
+	rm -rf \
+		$(PARAM_PULUMI_DIR)/sdk \
+		$(PARAM_PULUMI_DIR)/node_modules \
+		$(PARAM_PULUMI_DIR)/bin
+
+test-parameterized-provider-from-file: install-param-plugin clean-param-sdk
+	curl -sf http://localhost:3000/openapi -o $(PARAM_SPEC_FILE)
+	cd $(PARAM_PULUMI_DIR) && pulumi package add openapi-provider ../openapi.json
+	cd $(PARAM_PULUMI_DIR) && pulumi install
+	cd $(PARAM_PULUMI_DIR) && pulumi stack init test --non-interactive || true
+	cd $(PARAM_PULUMI_DIR) && pulumi up --yes --non-interactive
+	cd $(PARAM_PULUMI_DIR) && pulumi destroy --yes --non-interactive
+	cd $(PARAM_PULUMI_DIR) && pulumi stack rm test --yes --non-interactive
+	rm -f $(PARAM_SPEC_FILE)
+
 # ─── Combined ─────────────────────────────────────────────────────────────────
 
-test: test-code-provider test-parameterized-provider
+test: test-code-provider test-parameterized-provider test-parameterized-provider-from-file
 
 clean:
 	rm -rf \
@@ -76,6 +94,7 @@ clean:
 		$(PARAM_PULUMI_DIR)/sdk \
 		$(PARAM_PULUMI_DIR)/node_modules \
 		$(PARAM_PULUMI_DIR)/bin \
+		$(PARAM_SPEC_FILE) \
 		api/dev.db \
 		code-provider/pulumi/bin \
 		code-provider/pulumi/node_modules \
