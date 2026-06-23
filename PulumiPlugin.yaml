@@ -1,4 +1,0 @@
-resource: true
-name: openapi-provider
-version: v0.1.0
-server: github://api.github.com/pierskarsenbarg/pulumi-openapi-provider

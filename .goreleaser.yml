@@ -32,8 +32,6 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
-    files:
-      - PulumiPlugin.yaml
 
 changelog:
   sort: asc
