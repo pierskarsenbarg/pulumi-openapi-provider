@@ -7,7 +7,31 @@ before:
     - go mod tidy
 
 builds:
-  - skip: true
+  - id: pulumi-resource-openapi-provider
+    main: ./cmd/openapi-provider
+    binary: pulumi-resource-openapi-provider
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: pulumi-resource-openapi-provider
+    builds:
+      - pulumi-resource-openapi-provider
+    name_template: "pulumi-resource-openapi-provider-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
 
 changelog:
   sort: asc

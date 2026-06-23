@@ -13,6 +13,9 @@ make lint
 # Tidy all go.mod files in the repo
 make tidy
 
+# Build the standalone parameterized provider binary (output: bin/pulumi-resource-openapi-provider)
+make build-provider
+
 # Build all example provider binaries (output: bin/examples/)
 make build-examples
 
@@ -35,7 +38,12 @@ The examples each have their own `go.mod` with a `replace` directive pointing at
 
 This is a Go library that lets engineers build Pulumi native providers from OpenAPI/Swagger specs at runtime — no code generation. It wraps [`pulumi-go-provider`](https://github.com/pulumi/pulumi-go-provider).
 
-### Data flow
+The repo ships two distinct usage modes:
+
+1. **Library mode** (`provider.go`) — provider authors import the package and call `NewProviderBuilder` / `RunProvider`. Spec URL is known at compile time.
+2. **Parameterized binary mode** (`parameterized.go`, `cmd/openapi-provider/`) — a single `pulumi-resource-openapi-provider` binary that accepts the spec URL at runtime via the Parameterize RPC. Users run `pulumi package add openapi-provider '<url>'` and get a typed SDK with no Go code required.
+
+### Library data flow
 
 ```
 Options{SpecURL/SpecPath} 
@@ -46,6 +54,26 @@ Options{SpecURL/SpecPath}
                                    # from AuthSchemes (falls back to generic vars if none declared)
   → runtime.Build()                # assembles a p.Provider with CRUD dispatch
   → infer.NewProviderBuilder().WithWrapped(dynProvider)  # layers infer on top
+```
+
+### Parameterized binary data flow
+
+```
+Parameterize(Args: ["https://spec.url", "--base-url=https://api.url"])
+  → parseParamArgs()               # splits spec URL and optional --base-url flag
+  → spec.Load(specURL)             # fetches the spec
+  → spec.BaseURL(doc)              # extracts server URL from spec (empty if not declared)
+  → slugifyTitle(info.title)       # derives package name, e.g. "Petstore API" → "petstore-api"
+  → normalizeVersion(info.version) # normalises to semver X.Y.Z
+  → spec.Discover()                # same discovery as library mode
+  → runtime.Build()                # builds the CRUD dispatch provider; stored as paramState.inner
+  → ParameterizeResponse{Name, Version}
+
+GetSchema()
+  → paramState.inner.GetSchema()   # returns schema built during Parameterize
+  → injects PackageSpec.Parameterization{BaseProvider, Parameter: blob}
+                                   # blob = JSON{specURL, baseURL}; embedded in generated SDKs
+                                   # and echoed back as ParameterizeRequestValue.Value on re-use
 ```
 
 ### Resource discovery convention (`spec/resource.go`)
@@ -68,6 +96,14 @@ Resource names are derived by CamelCase-joining the **static** (non-`{param}`) s
 
 `ProviderBuilder.Build()` calls `pb.inner.BuildOptions()` then `infer.Provider(opts)` directly — bypassing `infer.ProviderBuilder.Build()` which requires at least one infer resource. The dynamic dispatch provider is composed via `infer.NewProviderBuilder().WithWrapped(dynProvider)`. Schema merging happens automatically: infer's `schema.Wrap` calls the wrapped provider's `GetSchema` and merges both.
 
+### Parameterized provider (`parameterized.go`)
+
+`parameterizedProvider` holds a mutex-protected `*paramState` (nil until `Parameterize` fires). All provider function methods (`getSchema`, `configure`, `check`, `create`, etc.) call `getState()` first and delegate to `paramState.inner`. This avoids any infer dependency for the parameterized path — the provider is wired directly as a `p.Provider` struct.
+
+`paramBlob` (JSON: `{"specURL":"…","baseURL":"…"}`) is the round-trip value embedded in `PackageSpec.Parameterization.Parameter`. `baseURL` is only populated when `--base-url` was explicitly supplied; an empty value means "re-derive from spec on next Parameterize".
+
+`spec.BaseURL(doc)` is the exported counterpart to the internal `extractBaseURLV2`/`extractBaseURLV3` helpers. It returns empty string when the spec has no declared server address, rather than defaulting to `localhost`. Used by the parameterized path to decide whether a `--base-url` flag is required.
+
 ### Key types
 
 - `spec.ResourceDef` — everything needed to CRUD a resource: paths, methods, ID param, input/output schemas
@@ -75,7 +111,8 @@ Resource names are derived by CamelCase-joining the **static** (non-`{param}`) s
 - `spec.DiscoveryResult` — slice of `ResourceDef` + shared types map + default base URL + `[]AuthScheme`
 - `config.AuthScheme` — runtime mirror of `spec.AuthScheme`; held by `ProviderConfig` to drive `Apply` and `AuthHeaders`
 - `config.ProviderConfig` — thread-safe holder for base URL and scheme values; `Apply` reads config vars named by each scheme; `AuthHeaders` builds the HTTP header map
-- `openapi.Options` / `openapi.ResourceOverride` — public API surface for provider authors
+- `openapi.Options` / `openapi.ResourceOverride` — public API surface for library provider authors
+- `openapi.parameterizedProvider` / `openapi.paramState` — internal types for the parameterized binary; not part of the library API
 
 ### Reference
 

@@ -6,12 +6,15 @@ EXAMPLES     := $(notdir $(EXAMPLE_DIRS))
 
 .SECONDARY:
 
-.PHONY: build test tidy build-examples schema gen-sdk clean \
+.PHONY: build build-provider test tidy build-examples schema gen-sdk clean \
         $(addprefix schema-, $(EXAMPLES)) \
         $(addprefix gen-sdk-, $(EXAMPLES))
 
 build:
 	go build ./...
+
+build-provider:
+	go build -o bin/pulumi-resource-openapi-provider ./cmd/openapi-provider
 
 test:
 	$(GO_TEST) ./...
@@ -39,4 +42,4 @@ gen-sdk-%: examples/%/schema.json
 	pulumi package gen-sdk ./bin/examples/pulumi-resource-$* --language all --out examples/$*/sdk
 
 clean:
-	rm -rf bin/examples coverage.txt
+	rm -rf bin/ coverage.txt

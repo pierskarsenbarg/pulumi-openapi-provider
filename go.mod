@@ -3,6 +3,7 @@ module github.com/pierskarsenbarg/pulumi-openapi-provider
 go 1.26.4
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/pb33f/libopenapi v0.38.1
 	github.com/pulumi/pulumi-go-provider v1.3.2
 	github.com/pulumi/pulumi/pkg/v3 v3.232.0
@@ -19,7 +20,6 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
