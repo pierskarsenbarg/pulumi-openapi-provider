@@ -107,12 +107,6 @@ jobs:
         env:
           PULUMI_CONFIG_PASSPHRASE: ""
 
-      - name: Clean parameterized provider SDK artifacts
-        run: make clean-param-sdk
-
-      - name: Download OpenAPI spec to disk
-        run: curl -sf http://localhost:3000/openapi -o parameterized-provider/openapi.json
-
       - name: Run parameterized provider integration tests (file path)
         run: make test-parameterized-provider-from-file
         env:
