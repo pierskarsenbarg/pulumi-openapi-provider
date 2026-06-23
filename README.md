@@ -4,7 +4,62 @@ A Go framework for building [Pulumi](https://www.pulumi.com) native providers fr
 
 Built on top of [`pulumi-go-provider`](https://github.com/pulumi/pulumi-go-provider). The framework parses your spec at runtime, discovers resources by convention, maps OpenAPI schemas to Pulumi property types, and wires up HTTP CRUD dispatch automatically.
 
-## How it works
+There are two ways to use this project:
+
+- **[Parameterized binary](#pulumi-package-add-no-code-setup)** — install `pulumi-resource-openapi-provider` once and point it at any spec. No Go code required.
+- **[Go library](#go-library)** — import the package and build your own provider binary when you need custom resources, overrides, or metadata.
+
+---
+
+## `pulumi package add` — no-code setup
+
+Install the `pulumi-resource-openapi-provider` binary as a Pulumi plugin:
+
+```bash
+pulumi plugin install resource openapi-provider v0.1.0 \
+  --server github://api.github.com/pierskarsenbarg/pulumi-openapi-provider
+```
+
+Then generate a typed SDK for any OpenAPI spec in one command:
+
+```bash
+pulumi package add openapi-provider 'https://api.example.com/openapi.json'
+```
+
+This calls the Parameterize RPC on the binary, which:
+
+1. Fetches and parses the spec
+2. Derives a package name from `info.title` (e.g. `"Petstore API"` → `"petstore-api"`) and a semver version from `info.version`
+3. Discovers resources using the same path-convention logic as the library
+4. Returns a schema with a `parameterization` block that embeds the spec URL; generated SDKs carry this blob so re-parameterization is automatic
+
+The generated SDK and a `sdk-<language>/` directory appear in your project, ready to use.
+
+### Base URL
+
+If the spec declares a `servers[0].url` (OAS3) or `host` + `basePath` (Swagger 2.0) those values are used automatically. When the spec has no server address, or you want to override it, pass `--base-url`:
+
+```bash
+pulumi package add openapi-provider 'https://api.example.com/openapi.json' \
+  --base-url=https://api.example.com
+```
+
+If neither the spec nor `--base-url` provides a base URL, the command exits with a clear error.
+
+### Provider configuration
+
+After SDK generation, configure the provider the same way as the library-based approach (see [Provider configuration](#provider-configuration) below):
+
+```bash
+pulumi config set openapi-provider:bearerToken mytoken --secret
+pulumi config set openapi-provider:baseUrl https://api.example.com
+```
+
+---
+
+## Go library
+
+### How it works
 
 The framework groups API paths by their static prefix, then detects CRUD operations by HTTP method and path shape:
 
