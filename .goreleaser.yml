@@ -25,13 +25,13 @@ builds:
 
 archives:
   - id: pulumi-resource-openapi-provider
-    builds:
+    ids:
       - pulumi-resource-openapi-provider
     name_template: "pulumi-resource-openapi-provider-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    format: tar.gz
+    formats: ["tar.gz"]
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ["zip"]
 
 changelog:
   sort: asc
