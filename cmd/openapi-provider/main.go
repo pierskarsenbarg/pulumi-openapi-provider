@@ -9,7 +9,7 @@ import (
 )
 
 // version is set at build time via -ldflags "-X main.version=<ver>".
-var version = "0.0.0-dev"
+var version = "0.1.0"
 
 func main() {
 	if err := openapi.RunParameterizedProvider(context.Background(), version); err != nil {
