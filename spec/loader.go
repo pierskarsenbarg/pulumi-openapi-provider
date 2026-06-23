@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/pb33f/libopenapi"
 )
@@ -18,6 +19,21 @@ func Load(specURL, specPath string) (libopenapi.Document, error) {
 		return loadFromFile(specPath)
 	}
 	return nil, fmt.Errorf("either SpecURL or SpecPath must be provided")
+}
+
+// LoadSpec parses an OpenAPI spec from a URL or file path, detecting the source
+// by prefix: http:// and https:// are fetched over HTTP, file:// URIs have the
+// prefix stripped and read from disk, and anything else is treated as a local
+// file path (absolute or relative).
+func LoadSpec(src string) (libopenapi.Document, error) {
+	switch {
+	case strings.HasPrefix(src, "http://"), strings.HasPrefix(src, "https://"):
+		return loadFromURL(src)
+	case strings.HasPrefix(src, "file://"):
+		return loadFromFile(strings.TrimPrefix(src, "file://"))
+	default:
+		return loadFromFile(src)
+	}
 }
 
 func loadFromURL(url string) (libopenapi.Document, error) {
