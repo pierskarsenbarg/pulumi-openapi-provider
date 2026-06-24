@@ -19,7 +19,7 @@ make build-provider
 # Build all example provider binaries (output: bin/examples/)
 make build-examples
 
-# Generate schema.json for all examples
+# Generate schema.json for all examples (output: examples/*/schema.json — gitignored)
 make schema
 
 # Generate SDKs for all examples
@@ -86,6 +86,15 @@ Resource names are derived by CamelCase-joining the **static** (non-`{param}`) s
 
 "Context params" — `{param}` placeholders in the item path other than the trailing ID param (e.g. `{orgName}`) — are injected as required string inputs on the resource so users can provide them.
 
+#### Enum support
+
+Both `typeCollector` (V2) and `typeCollectorV3` (V3) handle enums in two places:
+
+- **Named enums** (`ensureType`): if a definition/component schema has `Enum` values and no `Properties`, it is registered as a `pschema.ComplexTypeSpec` with `Enum: [...]` instead of an object type. The `Type` field is set to the Pulumi equivalent of the OpenAPI type (`pulumiTypeForOAPIType`).
+- **Inline enums** (`convertSchema`): if a property schema has `Enum` values and a non-empty `typeHint` was passed by the caller, a named enum type is registered under `pkgname:index:TypeHint` and the property returns a `$ref` instead of a primitive type. The hint is derived from `ResourceName + PascalCase(propertyName)` (for resource-level properties) or `TypeName + PascalCase(propertyName)` (for nested object properties).
+
+`extractEnumValues` converts `[]*yaml.Node` → `[]pschema.EnumValueSpec`, using the YAML `Tag` field (`!!int`, `!!float`, `!!bool`, default `!!str`) to preserve native value types. Empty-string values are skipped — they produce an unnamed Go constant that collides with the type name during SDK generation.
+
 ### Runtime dispatch (`runtime/`)
 
 `runtime.Build()` returns a `p.Provider` struct (function-field based) keyed by Pulumi token. `tokenFromURN` extracts the token from the full URN for routing.
@@ -123,6 +132,7 @@ Resource names are derived by CamelCase-joining the **static** (non-`{param}`) s
 - Ordered maps are iterated with `.Oldest()` / `.Next()` (v2) or range over `.FromOldest()` (v3)
 - `SchemaProxy.GetReference()` returns the `$ref` string before resolution; call `.Schema()` to get the resolved schema
 - V2 definitions live under `#/definitions/`; V3 schemas live under `#/components/schemas/`
+- `schema.Enum` is `[]*yaml.Node` (from `go.yaml.in/yaml/v4`); use `n.Tag` to distinguish `!!int` / `!!float` / `!!bool` / `!!str` and `n.Value` for the string representation
 
 ## Integration tests
 

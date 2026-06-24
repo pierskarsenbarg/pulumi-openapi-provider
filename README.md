@@ -72,6 +72,21 @@ The framework groups API paths by their static prefix, then detects CRUD operati
 
 Each discovered group becomes a Pulumi resource. The path parameter on the Read/Delete endpoint (`{id}`) is used as the resource identifier.
 
+### Type mapping
+
+OpenAPI schema types are mapped to Pulumi property types:
+
+| OpenAPI type | Pulumi type |
+| ------------ | ----------- |
+| `string`     | `string`    |
+| `integer`    | `integer`   |
+| `number`     | `number`    |
+| `boolean`    | `boolean`   |
+| `array`      | `array`     |
+| `object`     | `object`    |
+
+**Enums** are fully supported for both Swagger 2.0 and OpenAPI 3.x. Named enum definitions (referenced via `$ref`) and inline enum values on properties are both registered as typed Pulumi enum types. The enum values' native types (string, integer, number, boolean) are preserved. Empty-string enum values are silently dropped as they cannot produce valid SDK constant names.
+
 ## Installation
 
 ```bash
