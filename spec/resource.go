@@ -3,6 +3,7 @@ package spec
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/pb33f/libopenapi"
@@ -10,6 +11,7 @@ import (
 	v2high "github.com/pb33f/libopenapi/datamodel/high/v2"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"go.yaml.in/yaml/v4"
 )
 
 // AuthScheme describes a single security scheme discovered from an OpenAPI spec.
@@ -461,7 +463,7 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 		for pair := createSchema.Properties.Oldest(); pair != nil; pair = pair.Next() {
 			apiName := pair.Key
 			camelName := toCamelCase(apiName)
-			spec := tc.convertProperty(pair.Value, swagger.Definitions)
+			spec := tc.convertProperty(pair.Value, swagger.Definitions, g.name+toPascalCase(apiName))
 			inputs[camelName] = spec
 			outputs[camelName] = spec
 			apiPropertyNames[camelName] = apiName
@@ -477,7 +479,7 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 			apiName := pair.Key
 			camelName := toCamelCase(apiName)
 			if _, alreadyInput := inputs[camelName]; !alreadyInput {
-				spec := tc.convertProperty(pair.Value, swagger.Definitions)
+				spec := tc.convertProperty(pair.Value, swagger.Definitions, g.name+toPascalCase(apiName))
 				outputs[camelName] = spec
 				apiPropertyNames[camelName] = apiName
 			}
@@ -581,6 +583,64 @@ func extractDefName(ref string) string {
 		return ref[len(prefix):]
 	}
 	return ""
+}
+
+// pulumiTypeForOAPIType maps an OpenAPI primitive type name to its Pulumi schema equivalent.
+func pulumiTypeForOAPIType(t string) string {
+	switch t {
+	case "integer":
+		return "integer"
+	case "number":
+		return "number"
+	case "boolean":
+		return "boolean"
+	default:
+		return "string"
+	}
+}
+
+// extractEnumValues converts a slice of yaml.Nodes (from schema.Enum) to Pulumi EnumValueSpecs.
+// The yaml Tag field is used to coerce the value to its correct underlying type.
+func extractEnumValues(nodes []*yaml.Node) []pschema.EnumValueSpec {
+	var values []pschema.EnumValueSpec
+	for _, n := range nodes {
+		if n == nil {
+			continue
+		}
+		// Skip empty-string values: they produce an unnamed constant that
+		// collides with the type name in Go codegen.
+		if n.Value == "" {
+			continue
+		}
+		var v any
+		switch n.Tag {
+		case "!!int":
+			i, err := strconv.Atoi(n.Value)
+			if err == nil {
+				v = i
+			} else {
+				v = n.Value
+			}
+		case "!!float":
+			f, err := strconv.ParseFloat(n.Value, 64)
+			if err == nil {
+				v = f
+			} else {
+				v = n.Value
+			}
+		case "!!bool":
+			b, err := strconv.ParseBool(n.Value)
+			if err == nil {
+				v = b
+			} else {
+				v = n.Value
+			}
+		default:
+			v = n.Value
+		}
+		values = append(values, pschema.EnumValueSpec{Value: v})
+	}
+	return values
 }
 
 func filterRequired(required []string, exclude string) []string {
@@ -692,7 +752,8 @@ type typeCollector struct {
 }
 
 // convertProperty converts a SchemaProxy to a Pulumi PropertySpec.
-func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2high.Definitions) pschema.PropertySpec {
+// typeHint is a PascalCase name used to register an inline enum type if the schema declares enum values.
+func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2high.Definitions, typeHint string) pschema.PropertySpec {
 	if proxy == nil {
 		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
 	}
@@ -709,10 +770,10 @@ func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2hi
 		}
 	}
 	schema := proxy.Schema()
-	return tc.convertSchema(schema, defs)
+	return tc.convertSchema(schema, defs, typeHint)
 }
 
-func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Definitions) pschema.PropertySpec {
+func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Definitions, typeHint string) pschema.PropertySpec {
 	if schema == nil {
 		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
 	}
@@ -720,6 +781,24 @@ func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Def
 	t := ""
 	if len(schema.Type) > 0 {
 		t = schema.Type[0]
+	}
+
+	// Inline enum: register a named enum type and return a $ref.
+	if len(schema.Enum) > 0 && typeHint != "" {
+		token := fmt.Sprintf("%s:index:%s", tc.pkgName, typeHint)
+		if _, exists := tc.types[token]; !exists {
+			tc.types[token] = pschema.ComplexTypeSpec{
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Type:        pulumiTypeForOAPIType(t),
+					Description: schema.Description,
+				},
+				Enum: extractEnumValues(schema.Enum),
+			}
+		}
+		return pschema.PropertySpec{
+			TypeSpec:    pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, typeHint)},
+			Description: schema.Description,
+		}
 	}
 
 	switch t {
@@ -753,7 +832,6 @@ func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Def
 			Description: schema.Description,
 		}
 	default:
-		// default to string
 		return pschema.PropertySpec{
 			TypeSpec:    pschema.TypeSpec{Type: "string"},
 			Description: schema.Description,
@@ -807,10 +885,26 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 		return
 	}
 
+	// Named enum type: scalar schema with enum values.
+	if len(defSchema.Enum) > 0 {
+		t := "string"
+		if len(defSchema.Type) > 0 {
+			t = defSchema.Type[0]
+		}
+		tc.types[token] = pschema.ComplexTypeSpec{
+			ObjectTypeSpec: pschema.ObjectTypeSpec{
+				Type:        pulumiTypeForOAPIType(t),
+				Description: defSchema.Description,
+			},
+			Enum: extractEnumValues(defSchema.Enum),
+		}
+		return
+	}
+
 	props := map[string]pschema.PropertySpec{}
 	if defSchema.Properties != nil {
 		for pair := defSchema.Properties.Oldest(); pair != nil; pair = pair.Next() {
-			props[toCamelCase(pair.Key)] = tc.convertProperty(pair.Value, defs)
+			props[toCamelCase(pair.Key)] = tc.convertProperty(pair.Value, defs, toPascalCase(defName)+toPascalCase(pair.Key))
 		}
 	}
 
@@ -996,7 +1090,7 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 		if createSchema.Properties != nil {
 			for apiName, propProxy := range createSchema.Properties.FromOldest() {
 				camelName := toCamelCase(apiName)
-				spec := tc.convertProperty(propProxy)
+				spec := tc.convertProperty(propProxy, g.name+toPascalCase(apiName))
 				inputs[camelName] = spec
 				outputs[camelName] = spec
 				apiPropertyNames[camelName] = apiName
@@ -1011,7 +1105,7 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 		for apiName, propProxy := range readSchema.Properties.FromOldest() {
 			camelName := toCamelCase(apiName)
 			if _, alreadyInput := inputs[camelName]; !alreadyInput {
-				outputs[camelName] = tc.convertProperty(propProxy)
+				outputs[camelName] = tc.convertProperty(propProxy, g.name+toPascalCase(apiName))
 				apiPropertyNames[camelName] = apiName
 			}
 		}
@@ -1123,7 +1217,9 @@ type typeCollectorV3 struct {
 	types      map[string]pschema.ComplexTypeSpec
 }
 
-func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy) pschema.PropertySpec {
+// convertProperty converts a SchemaProxy to a Pulumi PropertySpec.
+// typeHint is a PascalCase name used to register an inline enum type if the schema declares enum values.
+func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy, typeHint string) pschema.PropertySpec {
 	if proxy == nil {
 		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
 	}
@@ -1138,10 +1234,10 @@ func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy) pschema.
 			}
 		}
 	}
-	return tc.convertSchema(proxy.Schema())
+	return tc.convertSchema(proxy.Schema(), typeHint)
 }
 
-func (tc *typeCollectorV3) convertSchema(schema *highbase.Schema) pschema.PropertySpec {
+func (tc *typeCollectorV3) convertSchema(schema *highbase.Schema, typeHint string) pschema.PropertySpec {
 	if schema == nil {
 		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
 	}
@@ -1149,6 +1245,25 @@ func (tc *typeCollectorV3) convertSchema(schema *highbase.Schema) pschema.Proper
 	if len(schema.Type) > 0 {
 		t = schema.Type[0]
 	}
+
+	// Inline enum: register a named enum type and return a $ref.
+	if len(schema.Enum) > 0 && typeHint != "" {
+		token := fmt.Sprintf("%s:index:%s", tc.pkgName, typeHint)
+		if _, exists := tc.types[token]; !exists {
+			tc.types[token] = pschema.ComplexTypeSpec{
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Type:        pulumiTypeForOAPIType(t),
+					Description: schema.Description,
+				},
+				Enum: extractEnumValues(schema.Enum),
+			}
+		}
+		return pschema.PropertySpec{
+			TypeSpec:    pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, typeHint)},
+			Description: schema.Description,
+		}
+	}
+
 	switch t {
 	case "integer":
 		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "integer"}, Description: schema.Description}
@@ -1205,10 +1320,27 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 	if schema == nil {
 		return
 	}
+
+	// Named enum type: scalar schema with enum values.
+	if len(schema.Enum) > 0 {
+		t := "string"
+		if len(schema.Type) > 0 {
+			t = schema.Type[0]
+		}
+		tc.types[token] = pschema.ComplexTypeSpec{
+			ObjectTypeSpec: pschema.ObjectTypeSpec{
+				Type:        pulumiTypeForOAPIType(t),
+				Description: schema.Description,
+			},
+			Enum: extractEnumValues(schema.Enum),
+		}
+		return
+	}
+
 	props := map[string]pschema.PropertySpec{}
 	if schema.Properties != nil {
 		for name, propProxy := range schema.Properties.FromOldest() {
-			props[toCamelCase(name)] = tc.convertProperty(propProxy)
+			props[toCamelCase(name)] = tc.convertProperty(propProxy, toPascalCase(schemaName)+toPascalCase(name))
 		}
 	}
 	tc.types[token] = pschema.ComplexTypeSpec{

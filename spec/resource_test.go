@@ -823,3 +823,296 @@ func TestBaseURL_V3_NoServers_ReturnsEmpty(t *testing.T) {
 		t.Errorf("DefaultBaseURL = %q, want empty string when spec has no servers", result.DefaultBaseURL)
 	}
 }
+
+// --- Enum support ---
+
+const swaggerInlineEnum = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "basePath": "/",
+  "paths": {
+    "/widgets": {
+      "post": {
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {
+      "type": "object",
+      "required": ["name", "status"],
+      "properties": {
+        "name":   {"type": "string"},
+        "status": {"type": "string", "enum": ["active", "inactive", "pending"]}
+      }
+    }
+  }
+}`
+
+func TestEnum_V2_InlineStringEnum(t *testing.T) {
+	result := loadInline(t, swaggerInlineEnum)
+	if len(result.Resources) == 0 {
+		t.Fatal("expected at least one resource")
+	}
+	res := result.Resources[0]
+
+	// The inline enum on Widget.status should have been registered as a named type.
+	const wantToken = "test:index:WidgetsStatus"
+	enumType, ok := result.Types[wantToken]
+	if !ok {
+		t.Fatalf("Types map missing expected enum token %q; got %v", wantToken, result.Types)
+	}
+	if enumType.Type != "string" {
+		t.Errorf("enum type = %q, want string", enumType.Type)
+	}
+	if len(enumType.Enum) != 3 {
+		t.Fatalf("enum values count = %d, want 3", len(enumType.Enum))
+	}
+	wantValues := []string{"active", "inactive", "pending"}
+	for i, v := range enumType.Enum {
+		if v.Value != wantValues[i] {
+			t.Errorf("enum[%d].Value = %v, want %q", i, v.Value, wantValues[i])
+		}
+	}
+
+	// The property on the resource should reference the enum type, not use a plain "string".
+	prop, ok := res.InputSchema["status"]
+	if !ok {
+		t.Fatal("InputSchema missing property \"status\"")
+	}
+	wantRef := "#/types/test:index:WidgetsStatus"
+	if prop.TypeSpec.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	}
+	if prop.TypeSpec.Type != "" {
+		t.Errorf("status TypeSpec.Type = %q, want empty (should use Ref)", prop.TypeSpec.Type)
+	}
+}
+
+const swaggerNamedEnum = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "basePath": "/",
+  "paths": {
+    "/widgets": {
+      "post": {
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "WidgetStatus": {
+      "type": "string",
+      "enum": ["active", "inactive", "pending"]
+    },
+    "Widget": {
+      "type": "object",
+      "required": ["name", "status"],
+      "properties": {
+        "name":   {"type": "string"},
+        "status": {"$ref": "#/definitions/WidgetStatus"}
+      }
+    }
+  }
+}`
+
+func TestEnum_V2_NamedEnum(t *testing.T) {
+	result := loadInline(t, swaggerNamedEnum)
+	if len(result.Resources) == 0 {
+		t.Fatal("expected at least one resource")
+	}
+	res := result.Resources[0]
+
+	// The named WidgetStatus definition should be registered as an enum type.
+	const wantToken = "test:index:WidgetStatus"
+	enumType, ok := result.Types[wantToken]
+	if !ok {
+		t.Fatalf("Types map missing expected enum token %q; got %v", wantToken, result.Types)
+	}
+	if enumType.Type != "string" {
+		t.Errorf("enum type = %q, want string", enumType.Type)
+	}
+	if len(enumType.Enum) != 3 {
+		t.Fatalf("enum values count = %d, want 3", len(enumType.Enum))
+	}
+
+	// The status property should reference the named enum type.
+	prop, ok := res.InputSchema["status"]
+	if !ok {
+		t.Fatal("InputSchema missing property \"status\"")
+	}
+	wantRef := "#/types/test:index:WidgetStatus"
+	if prop.TypeSpec.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	}
+}
+
+const oas3InlineEnum = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "servers": [{"url": "https://api.example.com"}],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      },
+      "delete": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name":   {"type": "string"},
+          "status": {"type": "string", "enum": ["active", "inactive", "pending"]}
+        }
+      }
+    }
+  }
+}`
+
+func TestEnum_V3_InlineStringEnum(t *testing.T) {
+	result := loadInline(t, oas3InlineEnum)
+	if len(result.Resources) == 0 {
+		t.Fatal("expected at least one resource")
+	}
+	res := result.Resources[0]
+
+	// Widget.status is an inline enum — should be registered under the resource name + property name.
+	const wantToken = "test:index:WidgetsStatus"
+	enumType, ok := result.Types[wantToken]
+	if !ok {
+		t.Fatalf("Types map missing expected enum token %q; got %v", wantToken, result.Types)
+	}
+	if enumType.Type != "string" {
+		t.Errorf("enum type = %q, want string", enumType.Type)
+	}
+	if len(enumType.Enum) != 3 {
+		t.Fatalf("enum values count = %d, want 3", len(enumType.Enum))
+	}
+	wantValues := []string{"active", "inactive", "pending"}
+	for i, v := range enumType.Enum {
+		if v.Value != wantValues[i] {
+			t.Errorf("enum[%d].Value = %v, want %q", i, v.Value, wantValues[i])
+		}
+	}
+
+	prop, ok := res.InputSchema["status"]
+	if !ok {
+		t.Fatal("InputSchema missing property \"status\"")
+	}
+	wantRef := "#/types/test:index:WidgetsStatus"
+	if prop.TypeSpec.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	}
+	if prop.TypeSpec.Type != "" {
+		t.Errorf("status TypeSpec.Type = %q, want empty (should use Ref)", prop.TypeSpec.Type)
+	}
+}
+
+const oas3NamedEnum = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "servers": [{"url": "https://api.example.com"}],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      },
+      "delete": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "WidgetStatus": {
+        "type": "string",
+        "enum": ["active", "inactive", "pending"]
+      },
+      "Widget": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name":   {"type": "string"},
+          "status": {"$ref": "#/components/schemas/WidgetStatus"}
+        }
+      }
+    }
+  }
+}`
+
+func TestEnum_V3_NamedEnum(t *testing.T) {
+	result := loadInline(t, oas3NamedEnum)
+	if len(result.Resources) == 0 {
+		t.Fatal("expected at least one resource")
+	}
+	res := result.Resources[0]
+
+	// The named WidgetStatus component should be registered as an enum type.
+	const wantToken = "test:index:WidgetStatus"
+	enumType, ok := result.Types[wantToken]
+	if !ok {
+		t.Fatalf("Types map missing expected enum token %q; got %v", wantToken, result.Types)
+	}
+	if enumType.Type != "string" {
+		t.Errorf("enum type = %q, want string", enumType.Type)
+	}
+	if len(enumType.Enum) != 3 {
+		t.Fatalf("enum values count = %d, want 3", len(enumType.Enum))
+	}
+
+	// The status property should reference the named enum type.
+	prop, ok := res.InputSchema["status"]
+	if !ok {
+		t.Fatal("InputSchema missing property \"status\"")
+	}
+	wantRef := "#/types/test:index:WidgetStatus"
+	if prop.TypeSpec.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	}
+}
