@@ -607,6 +607,11 @@ func extractEnumValues(nodes []*yaml.Node) []pschema.EnumValueSpec {
 		if n == nil {
 			continue
 		}
+		// Skip empty-string values: they produce an unnamed constant that
+		// collides with the type name in Go codegen.
+		if n.Value == "" {
+			continue
+		}
 		var v any
 		switch n.Tag {
 		case "!!int":
