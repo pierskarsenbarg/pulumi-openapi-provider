@@ -20,7 +20,13 @@ const membership = new testapi.OrganisationsTeamsMembers("test-membership", {
   userId: user.id,
 });
 
+const office = new testapi.Office("test-office", {
+  name: "HQ",
+  location: "New York",
+});
+
 export const organisationId = org.id;
 export const teamId = team.id;
 export const userId = user.id;
 export const memberId = membership.id;
+export const officeId = office.id;
