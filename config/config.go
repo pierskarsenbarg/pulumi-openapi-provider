@@ -116,7 +116,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 		case "bearer":
 			val := c.schemeValues[s.ConfigVar]
 			if val != "" {
-				headers["Authorization"] = "Bearer " + val
+				headers["Authorization"] = "bearer " + val
 			}
 		case "basic":
 			user := c.schemeValues["username"]

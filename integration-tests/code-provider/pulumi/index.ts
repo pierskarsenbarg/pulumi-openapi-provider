@@ -25,8 +25,14 @@ const office = new testapi.Office("test-office", {
   location: "New York",
 });
 
+const invite = new testapi.OrganisationsInvites("test-invite", {
+  organisationId: org.id,
+  email: "bob@example.com",
+});
+
 export const organisationId = org.id;
 export const teamId = team.id;
 export const userId = user.id;
 export const memberId = membership.id;
 export const officeId = office.id;
+export const inviteId = invite.id;

@@ -20,7 +20,13 @@ const membership = new api.OrganisationsTeamsMembers("test-membership", {
   userId: user.id,
 });
 
+const invite = new api.OrganisationsInvites("test-invite", {
+  organisationId: org.id,
+  email: "bob@example.com",
+});
+
 export const organisationId = org.id;
 export const teamId = team.id;
 export const userId = user.id;
 export const memberId = membership.id;
+export const inviteId = invite.id;

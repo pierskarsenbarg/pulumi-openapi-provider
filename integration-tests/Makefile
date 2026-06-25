@@ -46,6 +46,7 @@ install-code-sdks: sdk
 test-code-provider: install-code-sdks
 	cd code-provider/pulumi && pulumi stack init test --non-interactive || true
 	cd code-provider/pulumi && pulumi config set testapi:baseUrl http://localhost:3000 --non-interactive
+	cd code-provider/pulumi && pulumi config set testapi:bearerToken test-bearer-token --non-interactive
 	cd code-provider/pulumi && pulumi up --yes --non-interactive
 	cd code-provider/pulumi && pulumi destroy --yes --non-interactive
 	cd code-provider/pulumi && pulumi stack rm test --yes --non-interactive
@@ -62,6 +63,7 @@ test-parameterized-provider: install-param-plugin
 	cd $(PARAM_PULUMI_DIR) && pulumi package add openapi-provider http://localhost:3000/openapi
 	cd $(PARAM_PULUMI_DIR) && pulumi install
 	cd $(PARAM_PULUMI_DIR) && pulumi stack init test --non-interactive || true
+	cd $(PARAM_PULUMI_DIR) && pulumi config set integration-test-api:bearerToken test-bearer-token --non-interactive
 	cd $(PARAM_PULUMI_DIR) && pulumi up --yes --non-interactive
 	cd $(PARAM_PULUMI_DIR) && pulumi destroy --yes --non-interactive
 	cd $(PARAM_PULUMI_DIR) && pulumi stack rm test --yes --non-interactive
@@ -77,6 +79,7 @@ test-parameterized-provider-from-file: install-param-plugin clean-param-sdk
 	cd $(PARAM_PULUMI_DIR) && pulumi package add openapi-provider ../openapi.json
 	cd $(PARAM_PULUMI_DIR) && pulumi install
 	cd $(PARAM_PULUMI_DIR) && pulumi stack init test --non-interactive || true
+	cd $(PARAM_PULUMI_DIR) && pulumi config set integration-test-api:bearerToken test-bearer-token --non-interactive
 	cd $(PARAM_PULUMI_DIR) && pulumi up --yes --non-interactive
 	cd $(PARAM_PULUMI_DIR) && pulumi destroy --yes --non-interactive
 	cd $(PARAM_PULUMI_DIR) && pulumi stack rm test --yes --non-interactive

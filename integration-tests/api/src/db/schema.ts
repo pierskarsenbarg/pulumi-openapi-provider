@@ -53,6 +53,19 @@ export const teamMembers = sqliteTable(
   (t) => [uniqueIndex("team_members_user_team_unique").on(t.userId, t.teamId)]
 );
 
+export const invites = sqliteTable("invites", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  email: text("email").notNull(),
+  organisationId: text("organisation_id")
+    .notNull()
+    .references(() => organisations.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+    () => new Date()
+  ),
+});
+
 export const offices = sqliteTable("offices", {
   id: text("id")
     .primaryKey()
@@ -72,5 +85,7 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type NewTeamMember = typeof teamMembers.$inferInsert;
+export type Invite = typeof invites.$inferSelect;
+export type NewInvite = typeof invites.$inferInsert;
 export type Office = typeof offices.$inferSelect;
 export type NewOffice = typeof offices.$inferInsert;
