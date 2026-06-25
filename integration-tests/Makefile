@@ -31,6 +31,7 @@ run-api: migrate
 # ─── Code provider ────────────────────────────────────────────────────────────
 
 build-code-provider:
+	cd code-provider/provider && go mod tidy
 	go build -C code-provider/provider -o ../bin/pulumi-resource-testapi .
 
 schema: build-code-provider
