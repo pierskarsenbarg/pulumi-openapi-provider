@@ -23,7 +23,6 @@ type OfficeArgs struct {
 
 type OfficeState struct {
 	OfficeArgs
-	Id        string  `pulumi:"id"`
 	CreatedAt *string `pulumi:"createdAt,optional"`
 }
 
@@ -46,7 +45,7 @@ func (r *Office) Create(ctx context.Context, req infer.CreateRequest[OfficeArgs]
 	}
 	return infer.CreateResponse[OfficeState]{
 		ID:     out.Id,
-		Output: OfficeState{OfficeArgs: inputs, Id: out.Id, CreatedAt: out.CreatedAt},
+		Output: OfficeState{OfficeArgs: inputs, CreatedAt: out.CreatedAt},
 	}, nil
 }
 
@@ -67,7 +66,7 @@ func (r *Office) Read(ctx context.Context, req infer.ReadRequest[OfficeArgs, Off
 	return infer.ReadResponse[OfficeArgs, OfficeState]{
 		ID:     req.ID,
 		Inputs: newInputs,
-		State:  OfficeState{OfficeArgs: newInputs, Id: out.Id, CreatedAt: out.CreatedAt},
+		State:  OfficeState{OfficeArgs: newInputs, CreatedAt: out.CreatedAt},
 	}, nil
 }
 
