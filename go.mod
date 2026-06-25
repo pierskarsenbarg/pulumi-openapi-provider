@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/pb33f/libopenapi v0.38.1
+	github.com/pb33f/libopenapi v0.38.3
 	github.com/pulumi/pulumi-go-provider v1.3.2
 	github.com/pulumi/pulumi/pkg/v3 v3.232.0
 	github.com/pulumi/pulumi/sdk/v3 v3.232.0
