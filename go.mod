@@ -8,7 +8,7 @@ require (
 	github.com/pulumi/pulumi-go-provider v1.3.2
 	github.com/pulumi/pulumi/pkg/v3 v3.232.0
 	github.com/pulumi/pulumi/sdk/v3 v3.232.0
-	go.yaml.in/yaml/v4 v4.0.0-rc.5
+	go.yaml.in/yaml/v4 v4.0.0-rc.6
 )
 
 require (
