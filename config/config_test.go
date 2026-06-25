@@ -114,8 +114,8 @@ func TestApply_Bearer(t *testing.T) {
 	cfg.Apply(req(map[string]string{"bearerToken": "tok123"}))
 
 	headers := cfg.AuthHeaders()
-	if headers["Authorization"] != "Bearer tok123" {
-		t.Errorf("Authorization = %q, want Bearer tok123", headers["Authorization"])
+	if headers["Authorization"] != "bearer tok123" {
+		t.Errorf("Authorization = %q, want bearer tok123", headers["Authorization"])
 	}
 }
 
@@ -176,8 +176,8 @@ func TestApply_Fallback_BearerToken(t *testing.T) {
 	cfg.Apply(req(map[string]string{"bearerToken": "tok"}))
 
 	headers := cfg.AuthHeaders()
-	if headers["Authorization"] != "Bearer tok" {
-		t.Errorf("Authorization = %q, want Bearer tok", headers["Authorization"])
+	if headers["Authorization"] != "bearer tok" {
+		t.Errorf("Authorization = %q, want bearer tok", headers["Authorization"])
 	}
 }
 
