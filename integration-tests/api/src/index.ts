@@ -4,6 +4,7 @@ import { organisationsRouter } from "./routes/organisations";
 import { teamsRouter } from "./routes/teams";
 import { usersRouter } from "./routes/users";
 import { membersRouter } from "./routes/members";
+import { officesRouter } from "./routes/offices";
 
 const app = new Hono();
 
@@ -11,6 +12,7 @@ app.route("/users", usersRouter);
 app.route("/organisations", organisationsRouter);
 app.route("/organisations/:organisationId/teams", teamsRouter);
 app.route("/organisations/:organisationId/teams", membersRouter);
+app.route("/offices", officesRouter);
 
 app.get(
   "/openapi",
