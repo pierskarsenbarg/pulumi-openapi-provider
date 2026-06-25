@@ -97,7 +97,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 			headers[h] = key
 		}
 		if token := c.schemeValues["bearerToken"]; token != "" {
-			headers["Authorization"] = "Bearer " + token
+			headers["Authorization"] = "bearer " + token
 		}
 		return headers
 	}
@@ -116,7 +116,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 		case "bearer":
 			val := c.schemeValues[s.ConfigVar]
 			if val != "" {
-				headers["Authorization"] = "Bearer " + val
+				headers["Authorization"] = "bearer " + val
 			}
 		case "basic":
 			user := c.schemeValues["username"]
@@ -146,4 +146,3 @@ func (c *ProviderConfig) Client() *http.Client {
 	}
 	return http.DefaultClient
 }
-
