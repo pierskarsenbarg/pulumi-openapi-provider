@@ -118,6 +118,7 @@ func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]Re
 	}
 
 	groups := groupPaths(swagger)
+	excludeSet := buildExcludeSet(excludeTags)
 	var resources []ResourceDef
 
 	for _, g := range groups {
@@ -127,7 +128,7 @@ func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]Re
 			continue
 		}
 
-		if len(excludeTags) > 0 && hasExcludedTag(excludeTags, collectV2GroupTags(g, swagger)) {
+		if len(excludeSet) > 0 && groupHasExcludedTagV2(excludeSet, g, swagger) {
 			continue
 		}
 
@@ -719,56 +720,78 @@ func v3OpTags(op *v3high.Operation) []string {
 	return op.Tags
 }
 
-// hasExcludedTag reports whether any tag in tags appears in the excludeTags list.
-func hasExcludedTag(excludeTags []string, tags []string) bool {
-	excluded := make(map[string]bool, len(excludeTags))
-	for _, t := range excludeTags {
-		excluded[t] = true
+// buildExcludeSet converts a slice of tag names into a set for O(1) lookup.
+func buildExcludeSet(excludeTags []string) map[string]struct{} {
+	if len(excludeTags) == 0 {
+		return nil
 	}
-	for _, tag := range tags {
-		if excluded[tag] {
+	set := make(map[string]struct{}, len(excludeTags))
+	for _, t := range excludeTags {
+		set[t] = struct{}{}
+	}
+	return set
+}
+
+// groupHasExcludedTagV2 reports whether any operation in the Swagger 2.0 path group
+// carries a tag that appears in excludeSet. It short-circuits on the first match
+// without allocating an intermediate tag slice.
+func groupHasExcludedTagV2(excludeSet map[string]struct{}, g pathGroup, swagger *v2high.Swagger) bool {
+	check := func(op *v2high.Operation) bool {
+		if op == nil {
+			return false
+		}
+		for _, tag := range op.Tags {
+			if _, ok := excludeSet[tag]; ok {
+				return true
+			}
+		}
+		return false
+	}
+	if swagger.Paths == nil || swagger.Paths.PathItems == nil {
+		return false
+	}
+	if pi, ok := swagger.Paths.PathItems.Get(g.collectionPath); ok {
+		if check(pi.Post) || check(pi.Get) {
+			return true
+		}
+	}
+	if pi, ok := swagger.Paths.PathItems.Get(g.itemPath); ok {
+		if check(pi.Get) || check(pi.Put) || check(pi.Patch) || check(pi.Delete) {
 			return true
 		}
 	}
 	return false
 }
 
-// collectV2GroupTags returns the union of all operation tags for a Swagger 2.0 path group.
-func collectV2GroupTags(g pathGroup, swagger *v2high.Swagger) []string {
-	if swagger.Paths == nil || swagger.Paths.PathItems == nil {
-		return nil
+// groupHasExcludedTagV3 reports whether any operation in the OAS3 path group
+// carries a tag that appears in excludeSet. It short-circuits on the first match
+// without allocating an intermediate tag slice.
+func groupHasExcludedTagV3(excludeSet map[string]struct{}, g pathGroup, d *v3high.Document) bool {
+	check := func(op *v3high.Operation) bool {
+		if op == nil {
+			return false
+		}
+		for _, tag := range op.Tags {
+			if _, ok := excludeSet[tag]; ok {
+				return true
+			}
+		}
+		return false
 	}
-	var tags []string
-	if pi, ok := swagger.Paths.PathItems.Get(g.collectionPath); ok {
-		tags = append(tags, v2OpTags(pi.Post)...)
-		tags = append(tags, v2OpTags(pi.Get)...)
-	}
-	if pi, ok := swagger.Paths.PathItems.Get(g.itemPath); ok {
-		tags = append(tags, v2OpTags(pi.Get)...)
-		tags = append(tags, v2OpTags(pi.Put)...)
-		tags = append(tags, v2OpTags(pi.Patch)...)
-		tags = append(tags, v2OpTags(pi.Delete)...)
-	}
-	return tags
-}
-
-// collectV3GroupTags returns the union of all operation tags for an OAS3 path group.
-func collectV3GroupTags(g pathGroup, d *v3high.Document) []string {
 	if d.Paths == nil || d.Paths.PathItems == nil {
-		return nil
+		return false
 	}
-	var tags []string
 	if pi, ok := d.Paths.PathItems.Get(g.collectionPath); ok {
-		tags = append(tags, v3OpTags(pi.Post)...)
-		tags = append(tags, v3OpTags(pi.Get)...)
+		if check(pi.Post) || check(pi.Get) {
+			return true
+		}
 	}
 	if pi, ok := d.Paths.PathItems.Get(g.itemPath); ok {
-		tags = append(tags, v3OpTags(pi.Get)...)
-		tags = append(tags, v3OpTags(pi.Put)...)
-		tags = append(tags, v3OpTags(pi.Patch)...)
-		tags = append(tags, v3OpTags(pi.Delete)...)
+		if check(pi.Get) || check(pi.Put) || check(pi.Patch) || check(pi.Delete) {
+			return true
+		}
 	}
-	return tags
+	return false
 }
 
 func applyOverride(res *ResourceDef, or ResourceOverride) {
@@ -1002,6 +1025,7 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 		}
 	}
 	groups := groupPathStrings(pathKeys)
+	excludeSet := buildExcludeSet(excludeTags)
 
 	var resources []ResourceDef
 	for _, g := range groups {
@@ -1010,7 +1034,7 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 			continue
 		}
 
-		if len(excludeTags) > 0 && hasExcludedTag(excludeTags, collectV3GroupTags(g, d)) {
+		if len(excludeSet) > 0 && groupHasExcludedTagV3(excludeSet, g, d) {
 			continue
 		}
 
