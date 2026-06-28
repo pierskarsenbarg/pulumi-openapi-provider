@@ -71,12 +71,13 @@ func BaseURL(doc libopenapi.Document) string {
 
 // Discover identifies Pulumi resources from an OpenAPI document using path conventions.
 // Supports both Swagger 2.0 and OpenAPI 3.x specs.
-func Discover(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride) (DiscoveryResult, error) {
+// excludeTags lists operation tags whose resources should be excluded from discovery.
+func Discover(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride, excludeTags []string) (DiscoveryResult, error) {
 	info := doc.GetSpecInfo()
 	if info.SpecFormat == "oas2" {
-		return discoverV2(doc, pkgName, overrides)
+		return discoverV2(doc, pkgName, overrides, excludeTags)
 	}
-	return discoverV3(doc, pkgName, overrides)
+	return discoverV3(doc, pkgName, overrides, excludeTags)
 }
 
 // ResourceOverride is re-declared here to avoid circular imports; callers pass the openapi.ResourceOverride.
@@ -101,7 +102,7 @@ type pathGroup struct {
 	idPathParam    string // the trailing param name, e.g. "petId" or "tokenId"
 }
 
-func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride) (DiscoveryResult, error) {
+func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride, excludeTags []string) (DiscoveryResult, error) {
 	model, err := doc.BuildV2Model()
 	if err != nil && model == nil {
 		return DiscoveryResult{}, fmt.Errorf("building v2 model: %w", err)
@@ -123,6 +124,10 @@ func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]Re
 		name := g.name
 		or, hasOverride := overrides[name]
 		if hasOverride && or.Skip {
+			continue
+		}
+
+		if len(excludeTags) > 0 && hasExcludedTag(excludeTags, collectV2GroupTags(g, swagger)) {
 			continue
 		}
 
@@ -714,6 +719,58 @@ func v3OpTags(op *v3high.Operation) []string {
 	return op.Tags
 }
 
+// hasExcludedTag reports whether any tag in tags appears in the excludeTags list.
+func hasExcludedTag(excludeTags []string, tags []string) bool {
+	excluded := make(map[string]bool, len(excludeTags))
+	for _, t := range excludeTags {
+		excluded[t] = true
+	}
+	for _, tag := range tags {
+		if excluded[tag] {
+			return true
+		}
+	}
+	return false
+}
+
+// collectV2GroupTags returns the union of all operation tags for a Swagger 2.0 path group.
+func collectV2GroupTags(g pathGroup, swagger *v2high.Swagger) []string {
+	if swagger.Paths == nil || swagger.Paths.PathItems == nil {
+		return nil
+	}
+	var tags []string
+	if pi, ok := swagger.Paths.PathItems.Get(g.collectionPath); ok {
+		tags = append(tags, v2OpTags(pi.Post)...)
+		tags = append(tags, v2OpTags(pi.Get)...)
+	}
+	if pi, ok := swagger.Paths.PathItems.Get(g.itemPath); ok {
+		tags = append(tags, v2OpTags(pi.Get)...)
+		tags = append(tags, v2OpTags(pi.Put)...)
+		tags = append(tags, v2OpTags(pi.Patch)...)
+		tags = append(tags, v2OpTags(pi.Delete)...)
+	}
+	return tags
+}
+
+// collectV3GroupTags returns the union of all operation tags for an OAS3 path group.
+func collectV3GroupTags(g pathGroup, d *v3high.Document) []string {
+	if d.Paths == nil || d.Paths.PathItems == nil {
+		return nil
+	}
+	var tags []string
+	if pi, ok := d.Paths.PathItems.Get(g.collectionPath); ok {
+		tags = append(tags, v3OpTags(pi.Post)...)
+		tags = append(tags, v3OpTags(pi.Get)...)
+	}
+	if pi, ok := d.Paths.PathItems.Get(g.itemPath); ok {
+		tags = append(tags, v3OpTags(pi.Get)...)
+		tags = append(tags, v3OpTags(pi.Put)...)
+		tags = append(tags, v3OpTags(pi.Patch)...)
+		tags = append(tags, v3OpTags(pi.Delete)...)
+	}
+	return tags
+}
+
 func applyOverride(res *ResourceDef, or ResourceOverride) {
 	if or.Token != "" {
 		res.Token = or.Token
@@ -923,7 +980,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 // OpenAPI 3.x support
 // ---------------------------------------------------------------------------
 
-func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride) (DiscoveryResult, error) {
+func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride, excludeTags []string) (DiscoveryResult, error) {
 	model, err := doc.BuildV3Model()
 	if err != nil && model == nil {
 		return DiscoveryResult{}, fmt.Errorf("building v3 model: %w", err)
@@ -952,6 +1009,11 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 		if hasOverride && or.Skip {
 			continue
 		}
+
+		if len(excludeTags) > 0 && hasExcludedTag(excludeTags, collectV3GroupTags(g, d)) {
+			continue
+		}
+
 		res, ok := buildResourceV3(g, d, pkgName, rootTags, tc)
 		if !ok {
 			continue

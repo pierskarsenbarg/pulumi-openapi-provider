@@ -171,7 +171,7 @@ func GetSchema(name, version string, opts Options) (string, error) {
 	}
 
 	overrides := convertOverrides(opts.Overrides)
-	result, err := spec.Discover(doc, name, overrides)
+	result, err := spec.Discover(doc, name, overrides, opts.ExcludeTags)
 	if err != nil {
 		return "", fmt.Errorf("discovering resources: %w", err)
 	}
@@ -187,7 +187,7 @@ func buildDynamicProvider(name, version string, opts Options) (p.Provider, error
 	}
 
 	overrides := convertOverrides(opts.Overrides)
-	result, err := spec.Discover(doc, name, overrides)
+	result, err := spec.Discover(doc, name, overrides, opts.ExcludeTags)
 	if err != nil {
 		return p.Provider{}, fmt.Errorf("discovering resources: %w", err)
 	}

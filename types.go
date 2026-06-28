@@ -15,6 +15,10 @@ type Options struct {
 	// Overrides customizes how discovered resources map to Pulumi operations.
 	// Keys are the discovered resource names (e.g. "Pet", "StoreOrder").
 	Overrides map[string]ResourceOverride
+	// ExcludeTags lists OpenAPI operation tags whose associated resources should be
+	// excluded from discovery. Any resource whose CRUD operations include at least
+	// one matching tag is skipped entirely.
+	ExcludeTags []string
 }
 
 // ResourceOverride customizes how a discovered resource maps to Pulumi operations.
