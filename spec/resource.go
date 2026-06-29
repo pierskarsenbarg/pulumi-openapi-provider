@@ -165,14 +165,18 @@ func extractAuthSchemesV2(swagger *v2high.Swagger) []AuthScheme {
 		switch s.Type {
 		case "apiKey":
 			scheme := AuthScheme{
-				Kind:        "apiKey",
 				ConfigVar:   lowercaseFirst(key),
 				Description: s.Description,
 				Secret:      true,
 			}
-			if s.In == "header" {
+			if s.In == "header" && s.Name == "Authorization" {
+				scheme.Kind = "bearer"
+				scheme.HeaderName = "Authorization"
+			} else if s.In == "header" {
+				scheme.Kind = "apiKey"
 				scheme.HeaderName = s.Name
-			} else if s.In == "query" {
+			} else {
+				scheme.Kind = "apiKey"
 				scheme.QueryParam = s.Name
 			}
 			schemes = append(schemes, scheme)
@@ -1107,14 +1111,20 @@ func extractAuthSchemesV3(d *v3high.Document) []AuthScheme {
 		switch s.Type {
 		case "apiKey":
 			scheme := AuthScheme{
-				Kind:        "apiKey",
 				ConfigVar:   lowercaseFirst(key),
 				Description: s.Description,
 				Secret:      true,
 			}
-			if s.In == "header" {
+			if s.In == "header" && s.Name == "Authorization" {
+				// Treat as bearer: runtime sends "Bearer <token>" on Authorization.
+				// Use AuthOverride if the API requires a different prefix.
+				scheme.Kind = "bearer"
+				scheme.HeaderName = "Authorization"
+			} else if s.In == "header" {
+				scheme.Kind = "apiKey"
 				scheme.HeaderName = s.Name
-			} else if s.In == "query" {
+			} else {
+				scheme.Kind = "apiKey"
 				scheme.QueryParam = s.Name
 			}
 			schemes = append(schemes, scheme)
