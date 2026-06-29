@@ -1613,6 +1613,12 @@ func TestDiscover_TrailingSlashPaths(t *testing.T) {
 	if _, ok := res.InputSchema["name"]; !ok {
 		t.Error("InputSchema missing expected property \"name\"")
 	}
+	if res.CreatePath != "/widgets/" {
+		t.Errorf("CreatePath = %q, want /widgets/", res.CreatePath)
+	}
+	if res.ReadPath != "/widgets/{widgetId}/" {
+		t.Errorf("ReadPath = %q, want /widgets/{widgetId}/", res.ReadPath)
+	}
 }
 
 // oas3TrailingSlashNested exercises the case where every path ends with "/" and

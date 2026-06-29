@@ -272,6 +272,9 @@ func groupPathStrings(paths []string) []pathGroup {
 		idParam := last[1 : len(last)-1]
 		parentSegs := segs[:len(segs)-1]
 		collectionPath := "/" + strings.Join(parentSegs, "/")
+		if strings.HasSuffix(rawPath, "/") {
+			collectionPath += "/"
+		}
 
 		nameSegs := parentSegs
 		if len(nameSegs) > 0 && nameSegs[0] == "api" {
@@ -288,7 +291,7 @@ func groupPathStrings(paths []string) []pathGroup {
 			itemPath:       rawPath,
 			idPathParam:    idParam,
 		})
-		claimedCollection[collectionPath] = true
+		claimedCollection[strings.TrimSuffix(collectionPath, "/")] = true
 	}
 	return groups
 }
