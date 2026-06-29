@@ -274,7 +274,7 @@ func testServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *conf
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
-	cfg := config.New(nil, srv.URL, nil)
+	cfg := config.New(nil, srv.URL, nil, "", nil)
 	return srv, cfg
 }
 
@@ -431,7 +431,7 @@ func TestCRUD_Delete_NotFound_IsOK(t *testing.T) {
 }
 
 func TestCRUD_Create_EmptyBaseURL(t *testing.T) {
-	cfg := config.New(nil, "", nil)
+	cfg := config.New(nil, "", nil, "", nil)
 	client := &crudClient{cfg: cfg}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
 	_, _, err := client.create(context.Background(), testResource(), inputs)
@@ -444,7 +444,7 @@ func TestCRUD_Create_EmptyBaseURL(t *testing.T) {
 }
 
 func TestCRUD_Read_EmptyBaseURL(t *testing.T) {
-	cfg := config.New(nil, "", nil)
+	cfg := config.New(nil, "", nil, "", nil)
 	client := &crudClient{cfg: cfg}
 	_, err := client.read(context.Background(), testResource(), "42", nil)
 	if err == nil {
@@ -572,7 +572,7 @@ func TestHandleCheck_ContextParamRequired(t *testing.T) {
 // --- Configure ---
 
 func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
-	cfg := config.New(nil, "", nil)
+	cfg := config.New(nil, "", nil, "", nil)
 	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
 	args := property.NewMap(map[string]property.Value{
 		"baseUrl": property.New("https://api.example.com"),
@@ -584,7 +584,7 @@ func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
 }
 
 func TestConfigure_OKWhenBaseURLFromDefault(t *testing.T) {
-	cfg := config.New(nil, "https://api.example.com", nil)
+	cfg := config.New(nil, "https://api.example.com", nil, "", nil)
 	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
 	err := provider.Configure(context.Background(), p.ConfigureRequest{})
 	if err != nil {

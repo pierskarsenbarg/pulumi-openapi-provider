@@ -197,7 +197,13 @@ func buildDynamicProvider(name, version string, opts Options) (p.Provider, error
 		baseURL = result.DefaultBaseURL
 	}
 
-	cfg := config.New(opts.HTTPClient, baseURL, convertAuthSchemes(result.AuthSchemes))
+	var authHeaderOverride string
+	var tokenPrefixOverride *string
+	if opts.AuthOverride != nil {
+		authHeaderOverride = opts.AuthOverride.HeaderName
+		tokenPrefixOverride = &opts.AuthOverride.TokenPrefix
+	}
+	cfg := config.New(opts.HTTPClient, baseURL, convertAuthSchemes(result.AuthSchemes), authHeaderOverride, tokenPrefixOverride)
 	return runtime.Build(name, version, result, cfg), nil
 }
 

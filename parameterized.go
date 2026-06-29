@@ -121,7 +121,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		return p.ParameterizeResponse{}, fmt.Errorf("discovering resources: %w", err)
 	}
 
-	cfg := config.New(nil, baseURL, convertAuthSchemes(result.AuthSchemes))
+	cfg := config.New(nil, baseURL, convertAuthSchemes(result.AuthSchemes), "", nil)
 	inner := runtime.Build(pkgName, pkgVersion.String(), result, cfg)
 
 	blob, err := json.Marshal(paramBlob{Spec: specSrc, BaseURL: cliBaseURL})
