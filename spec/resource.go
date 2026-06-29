@@ -261,7 +261,7 @@ func groupPathStrings(paths []string) []pathGroup {
 		if !strings.HasPrefix(last, "{") || !strings.HasSuffix(last, "}") {
 			continue // not an item path
 		}
-		if claimedCollection[rawPath] {
+		if claimedCollection[strings.TrimSuffix(rawPath, "/")] {
 			continue // already used as a collection for a deeper group
 		}
 		if seen[rawPath] {
