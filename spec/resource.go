@@ -398,10 +398,14 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 	if g.collectionPath != "" {
 		if pi, ok := swagger.Paths.PathItems.Get(g.collectionPath); ok {
 			collectionItem = pi
+		} else if pi, ok := swagger.Paths.PathItems.Get(g.collectionPath + "/"); ok {
+			collectionItem = pi
 		}
 	}
 	if g.itemPath != "" {
 		if pi, ok := swagger.Paths.PathItems.Get(g.itemPath); ok {
+			itemItem = pi
+		} else if pi, ok := swagger.Paths.PathItems.Get(g.itemPath + "/"); ok {
 			itemItem = pi
 		}
 	}
@@ -752,14 +756,20 @@ func groupHasExcludedTagV2(excludeSet map[string]struct{}, g pathGroup, swagger 
 	if swagger.Paths == nil || swagger.Paths.PathItems == nil {
 		return false
 	}
-	if pi, ok := swagger.Paths.PathItems.Get(g.collectionPath); ok {
-		if check(pi.Post) || check(pi.Get) {
-			return true
+	for _, p := range []string{g.collectionPath, g.collectionPath + "/"} {
+		if pi, ok := swagger.Paths.PathItems.Get(p); ok {
+			if check(pi.Post) || check(pi.Get) {
+				return true
+			}
+			break
 		}
 	}
-	if pi, ok := swagger.Paths.PathItems.Get(g.itemPath); ok {
-		if check(pi.Get) || check(pi.Put) || check(pi.Patch) || check(pi.Delete) {
-			return true
+	for _, p := range []string{g.itemPath, g.itemPath + "/"} {
+		if pi, ok := swagger.Paths.PathItems.Get(p); ok {
+			if check(pi.Get) || check(pi.Put) || check(pi.Patch) || check(pi.Delete) {
+				return true
+			}
+			break
 		}
 	}
 	return false
@@ -783,14 +793,20 @@ func groupHasExcludedTagV3(excludeSet map[string]struct{}, g pathGroup, d *v3hig
 	if d.Paths == nil || d.Paths.PathItems == nil {
 		return false
 	}
-	if pi, ok := d.Paths.PathItems.Get(g.collectionPath); ok {
-		if check(pi.Post) || check(pi.Get) {
-			return true
+	for _, p := range []string{g.collectionPath, g.collectionPath + "/"} {
+		if pi, ok := d.Paths.PathItems.Get(p); ok {
+			if check(pi.Post) || check(pi.Get) {
+				return true
+			}
+			break
 		}
 	}
-	if pi, ok := d.Paths.PathItems.Get(g.itemPath); ok {
-		if check(pi.Get) || check(pi.Put) || check(pi.Patch) || check(pi.Delete) {
-			return true
+	for _, p := range []string{g.itemPath, g.itemPath + "/"} {
+		if pi, ok := d.Paths.PathItems.Get(p); ok {
+			if check(pi.Get) || check(pi.Put) || check(pi.Patch) || check(pi.Delete) {
+				return true
+			}
+			break
 		}
 	}
 	return false
@@ -1125,10 +1141,14 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 	if g.collectionPath != "" {
 		if pi, ok := d.Paths.PathItems.Get(g.collectionPath); ok {
 			collectionItem = pi
+		} else if pi, ok := d.Paths.PathItems.Get(g.collectionPath + "/"); ok {
+			collectionItem = pi
 		}
 	}
 	if g.itemPath != "" {
 		if pi, ok := d.Paths.PathItems.Get(g.itemPath); ok {
+			itemItem = pi
+		} else if pi, ok := d.Paths.PathItems.Get(g.itemPath + "/"); ok {
 			itemItem = pi
 		}
 	}

@@ -1543,3 +1543,91 @@ func TestBuildSchema_DeprecatedResource(t *testing.T) {
 		t.Errorf("Gadgets resource has unexpected deprecationMessage %q", parsed.Resources[gadgetsToken].DeprecationMessage)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Trailing-slash path tests (APIs like NetBox where all paths end in "/")
+// ---------------------------------------------------------------------------
+
+const oas3TrailingSlash = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "servers": [{"url": "https://api.example.com"}],
+  "paths": {
+    "/widgets/": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+            }
+          }
+        }
+      }
+    },
+    "/widgets/{widgetId}/": {
+      "get": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {
+        "type": "object",
+        "properties": {
+          "id":   {"type": "integer"},
+          "name": {"type": "string"}
+        }
+      }
+    }
+  }
+}`
+
+func TestDiscover_TrailingSlashPaths(t *testing.T) {
+	result := loadInline(t, oas3TrailingSlash)
+
+	if len(result.Resources) == 0 {
+		t.Fatal("expected at least one resource; trailing-slash paths were not matched")
+	}
+
+	res := result.Resources[0]
+	if res.Name != "Widgets" {
+		t.Errorf("Name = %q, want Widgets", res.Name)
+	}
+	if _, ok := res.InputSchema["name"]; !ok {
+		t.Error("InputSchema missing expected property \"name\"")
+	}
+}
+
+func TestDiscover_NetBox(t *testing.T) {
+	doc, err := spec.Load("http://localhost:8000/api/schema/", "")
+	if err != nil {
+		t.Skipf("skipping: cannot fetch NetBox spec: %v", err)
+	}
+
+	result, err := spec.Discover(doc, "netbox", nil, nil)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+
+	if len(result.Resources) == 0 {
+		t.Fatal("expected resources from NetBox spec, got none — trailing-slash path lookup may be broken")
+	}
+	t.Logf("discovered %d resources from NetBox", len(result.Resources))
+}
