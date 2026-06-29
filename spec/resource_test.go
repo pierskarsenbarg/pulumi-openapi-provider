@@ -14,7 +14,7 @@ func TestDiscover_Petstore(t *testing.T) {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
 
-	result, err := spec.Discover(doc, "petstore", nil)
+	result, err := spec.Discover(doc, "petstore", nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestDiscover_IdNotInSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	result, err := spec.Discover(doc, "test", nil)
+	result, err := spec.Discover(doc, "test", nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -215,7 +215,7 @@ func loadInline(t *testing.T, content string) spec.DiscoveryResult {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	result, err := spec.Discover(doc, "test", nil)
+	result, err := spec.Discover(doc, "test", nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -563,7 +563,7 @@ func TestDiscover_Override_Skip(t *testing.T) {
 	}
 	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
 		"Widget": {Skip: true},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -589,7 +589,7 @@ func TestDiscover_Override_Token(t *testing.T) {
 	}
 	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
 		"Widgets": {Token: "test:index:Gadget"},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,13 +601,213 @@ func TestDiscover_Override_Token(t *testing.T) {
 	}
 }
 
+// swaggerWithTags is a Swagger 2.0 spec with two tagged resources: "widgets" (tag "widgets")
+// and "gadgets" (tag "gadgets"). Used to test ExcludeTags.
+const swaggerWithTags = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "basePath": "/",
+  "tags": [
+    {"name": "widgets"},
+    {"name": "gadgets"}
+  ],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "tags": ["widgets"],
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "tags": ["widgets"],
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "tags": ["widgets"],
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    },
+    "/gadgets": {
+      "post": {
+        "tags": ["gadgets"],
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Gadget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Gadget"}}}
+      }
+    },
+    "/gadgets/{gadgetId}": {
+      "get": {
+        "tags": ["gadgets"],
+        "parameters": [{"in": "path", "name": "gadgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Gadget"}}}
+      },
+      "delete": {
+        "tags": ["gadgets"],
+        "parameters": [{"in": "path", "name": "gadgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {"type": "object", "properties": {"name": {"type": "string"}}},
+    "Gadget": {"type": "object", "properties": {"name": {"type": "string"}}}
+  }
+}`
+
+// oas3WithTags is an OAS3 spec equivalent to swaggerWithTags.
+const oas3WithTags = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "servers": [{"url": "https://api.example.com"}],
+  "tags": [
+    {"name": "widgets"},
+    {"name": "gadgets"}
+  ],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "tags": ["widgets"],
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "tags": ["widgets"],
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      },
+      "delete": {
+        "tags": ["widgets"],
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    },
+    "/gadgets": {
+      "post": {
+        "tags": ["gadgets"],
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Gadget"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Gadget"}}}}}
+      }
+    },
+    "/gadgets/{gadgetId}": {
+      "get": {
+        "tags": ["gadgets"],
+        "parameters": [{"name": "gadgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Gadget"}}}}}
+      },
+      "delete": {
+        "tags": ["gadgets"],
+        "parameters": [{"name": "gadgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {"type": "object", "properties": {"name": {"type": "string"}}},
+      "Gadget": {"type": "object", "properties": {"name": {"type": "string"}}}
+    }
+  }
+}`
+
+func loadInlineWithTags(t *testing.T, content string, excludeTags []string) spec.DiscoveryResult {
+	t.Helper()
+	f, err := os.CreateTemp("", "spec-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(content); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	doc, err := spec.Load("", f.Name())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	result, err := spec.Discover(doc, "test", nil, excludeTags)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	return result
+}
+
+func TestDiscover_ExcludeTags_V2_SingleTag(t *testing.T) {
+	result := loadInlineWithTags(t, swaggerWithTags, []string{"widgets"})
+	for _, r := range result.Resources {
+		if r.Name == "Widgets" {
+			t.Error("Widgets should have been excluded by tag")
+		}
+	}
+	found := false
+	for _, r := range result.Resources {
+		if r.Name == "Gadgets" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("Gadgets should still be discovered when only 'widgets' tag is excluded")
+	}
+}
+
+func TestDiscover_ExcludeTags_V2_MultipleTag(t *testing.T) {
+	result := loadInlineWithTags(t, swaggerWithTags, []string{"widgets", "gadgets"})
+	if len(result.Resources) != 0 {
+		t.Errorf("expected no resources when all tags are excluded, got %d", len(result.Resources))
+	}
+}
+
+func TestDiscover_ExcludeTags_V2_NoMatch(t *testing.T) {
+	result := loadInlineWithTags(t, swaggerWithTags, []string{"unknown-tag"})
+	if len(result.Resources) != 2 {
+		t.Errorf("expected 2 resources when excluded tag doesn't match, got %d", len(result.Resources))
+	}
+}
+
+func TestDiscover_ExcludeTags_OAS3_SingleTag(t *testing.T) {
+	result := loadInlineWithTags(t, oas3WithTags, []string{"widgets"})
+	for _, r := range result.Resources {
+		if r.Name == "Widgets" {
+			t.Error("Widgets should have been excluded by tag")
+		}
+	}
+	found := false
+	for _, r := range result.Resources {
+		if r.Name == "Gadgets" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("Gadgets should still be discovered when only 'widgets' tag is excluded")
+	}
+}
+
+func TestDiscover_ExcludeTags_OAS3_MultipleTag(t *testing.T) {
+	result := loadInlineWithTags(t, oas3WithTags, []string{"widgets", "gadgets"})
+	if len(result.Resources) != 0 {
+		t.Errorf("expected no resources when all tags are excluded, got %d", len(result.Resources))
+	}
+}
+
+func TestDiscover_ExcludeTags_OAS3_NoMatch(t *testing.T) {
+	result := loadInlineWithTags(t, oas3WithTags, []string{"unknown-tag"})
+	if len(result.Resources) != 2 {
+		t.Errorf("expected 2 resources when excluded tag doesn't match, got %d", len(result.Resources))
+	}
+}
+
 func TestBuildSchema_Petstore(t *testing.T) {
 	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "")
 	if err != nil {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
 
-	result, err := spec.Discover(doc, "petstore", nil)
+	result, err := spec.Discover(doc, "petstore", nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
