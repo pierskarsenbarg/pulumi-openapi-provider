@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	p "github.com/pulumi/pulumi-go-provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -573,7 +574,7 @@ func TestHandleCheck_ContextParamRequired(t *testing.T) {
 
 func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
 	cfg := config.New(nil, "", nil, "", nil)
-	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
+	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg, false, PollingConfig{})
 	args := property.NewMap(map[string]property.Value{
 		"baseUrl": property.New("https://api.example.com"),
 	})
@@ -585,9 +586,135 @@ func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
 
 func TestConfigure_OKWhenBaseURLFromDefault(t *testing.T) {
 	cfg := config.New(nil, "https://api.example.com", nil, "", nil)
-	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg)
+	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg, false, PollingConfig{})
 	err := provider.Configure(context.Background(), p.ConfigureRequest{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// --- Polling ---
+
+// fastPolling returns a PollingConfig with a short timeout and minimal intervals for tests.
+func fastPolling(timeout time.Duration) PollingConfig {
+	return ResolvePollingConfig(timeout, 10*time.Millisecond, 50*time.Millisecond, 1.5)
+}
+
+func TestPolling_WaitUntilExists_SucceedsOnSecondPoll(t *testing.T) {
+	calls := 0
+	res := testResource()
+	_, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.Method == http.MethodGet && calls < 2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"widgetId": "42", "name": "Foo"})
+	})
+
+	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(2 * time.Second)}
+	err := client.waitUntilExists(context.Background(), res, "42", map[string]any{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls < 2 {
+		t.Errorf("expected at least 2 GET calls, got %d", calls)
+	}
+}
+
+func TestPolling_WaitUntilExists_TimesOut(t *testing.T) {
+	res := testResource()
+	_, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(100 * time.Millisecond)}
+	err := client.waitUntilExists(context.Background(), res, "42", map[string]any{})
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+}
+
+func TestPolling_WaitUntilGone_SucceedsOnSecondPoll(t *testing.T) {
+	calls := 0
+	res := testResource()
+	_, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.Method == http.MethodGet && calls < 2 {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"widgetId": "42"})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(2 * time.Second)}
+	err := client.waitUntilGone(context.Background(), res, "42", map[string]any{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls < 2 {
+		t.Errorf("expected at least 2 GET calls, got %d", calls)
+	}
+}
+
+func TestPolling_WaitUntilGone_TimesOut(t *testing.T) {
+	res := testResource()
+	_, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"widgetId": "42"})
+	})
+
+	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(100 * time.Millisecond)}
+	err := client.waitUntilGone(context.Background(), res, "42", map[string]any{})
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+}
+
+func TestPolling_ContextCancellation(t *testing.T) {
+	res := testResource()
+	_, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(10 * time.Second)}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- client.waitUntilExists(ctx, res, "42", map[string]any{})
+	}()
+
+	cancel()
+	err := <-done
+	if err == nil {
+		t.Fatal("expected cancellation error, got nil")
+	}
+}
+
+func TestPolling_DisabledSkipsPoll(t *testing.T) {
+	getCalls := 0
+	res := testResource()
+	_, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"widgetId": "42", "name": "Foo"})
+			return
+		}
+		getCalls++
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	client := &crudClient{cfg: cfg, pollingEnabled: false, polling: fastPolling(2 * time.Second)}
+	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
+	_, _, err := client.create(context.Background(), res, inputs)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if getCalls > 0 {
+		t.Errorf("expected no GET calls with polling disabled, got %d", getCalls)
 	}
 }

@@ -122,7 +122,8 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 	}
 
 	cfg := config.New(nil, baseURL, convertAuthSchemes(result.AuthSchemes), "", nil)
-	inner := runtime.Build(pkgName, pkgVersion.String(), result, cfg)
+	polling := runtime.ResolvePollingConfig(0, 0, 0, 0)
+	inner := runtime.Build(pkgName, pkgVersion.String(), result, cfg, true, polling)
 
 	blob, err := json.Marshal(paramBlob{Spec: specSrc, BaseURL: cliBaseURL})
 	if err != nil {

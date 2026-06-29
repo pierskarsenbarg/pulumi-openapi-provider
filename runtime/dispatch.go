@@ -13,13 +13,14 @@ import (
 
 // Build constructs a p.Provider that dispatches CRUD calls to the appropriate HTTP endpoints
 // based on the discovered resource definitions.
-func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.ProviderConfig) p.Provider {
+func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.ProviderConfig, pollingEnabled bool, polling PollingConfig) p.Provider {
 	byToken := make(map[string]spec.ResourceDef, len(result.Resources))
 	for _, res := range result.Resources {
 		byToken[res.Token] = res
 	}
 
 	schemaJSON, _ := spec.BuildSchema(pkgName, version, result)
+	client := &crudClient{cfg: cfg, pollingEnabled: pollingEnabled, polling: polling}
 
 	return p.Provider{
 		GetSchema: func(_ context.Context, _ p.GetSchemaRequest) (p.GetSchemaResponse, error) {
@@ -44,7 +45,7 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			if err != nil {
 				return p.CreateResponse{}, err
 			}
-			return handleCreate(ctx, res, req, cfg)
+			return handleCreate(ctx, res, req, client)
 		},
 
 		Read: func(ctx context.Context, req p.ReadRequest) (p.ReadResponse, error) {
@@ -68,7 +69,7 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			if err != nil {
 				return err
 			}
-			return handleDelete(ctx, res, req, cfg)
+			return handleDelete(ctx, res, req, client)
 		},
 
 		Diff: func(ctx context.Context, req p.DiffRequest) (p.DiffResponse, error) {

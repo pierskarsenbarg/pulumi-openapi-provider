@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	p "github.com/pulumi/pulumi-go-provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -16,8 +17,47 @@ import (
 	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
 )
 
+const (
+	defaultPollingTimeout         = 5 * time.Minute
+	defaultPollingInitialInterval = 1 * time.Second
+	defaultPollingMaxInterval     = 30 * time.Second
+	defaultPollingMultiplier      = 1.5
+)
+
+// PollingConfig holds resolved (defaults applied) polling parameters.
+type PollingConfig struct {
+	Timeout         time.Duration
+	InitialInterval time.Duration
+	MaxInterval     time.Duration
+	Multiplier      float64
+}
+
+// ResolvePollingConfig fills zero-value fields with defaults.
+func ResolvePollingConfig(timeout, initial, max time.Duration, multiplier float64) PollingConfig {
+	if timeout == 0 {
+		timeout = defaultPollingTimeout
+	}
+	if initial == 0 {
+		initial = defaultPollingInitialInterval
+	}
+	if max == 0 {
+		max = defaultPollingMaxInterval
+	}
+	if multiplier == 0 {
+		multiplier = defaultPollingMultiplier
+	}
+	return PollingConfig{
+		Timeout:         timeout,
+		InitialInterval: initial,
+		MaxInterval:     max,
+		Multiplier:      multiplier,
+	}
+}
+
 type crudClient struct {
-	cfg *config.ProviderConfig
+	cfg            *config.ProviderConfig
+	pollingEnabled bool
+	polling        PollingConfig
 }
 
 // create calls POST on the create endpoint and returns the new resource ID and state.
@@ -32,6 +72,19 @@ func (c *crudClient) create(ctx context.Context, res spec.ResourceDef, inputs pr
 	id := extractID(respBody, res.IDField, res.IDPathParam)
 	if id == "" {
 		return "", property.Map{}, fmt.Errorf("create %s: could not extract ID from response (looked for field %q)", res.Name, res.IDField)
+	}
+
+	if c.pollingEnabled {
+		state := propertyMapToGoMap(apiBodyToPropertyMap(respBody, res.APIPropertyNames))
+		if err := c.waitUntilExists(ctx, res, id, state); err != nil {
+			return "", property.Map{}, fmt.Errorf("create %s: %w", res.Name, err)
+		}
+		// Re-read to get fully-populated state after the resource is confirmed to exist.
+		outputs, err := c.read(ctx, res, id, state)
+		if err != nil {
+			return "", property.Map{}, fmt.Errorf("create %s: post-create read: %w", res.Name, err)
+		}
+		return id, outputs, nil
 	}
 
 	outputs := apiBodyToPropertyMap(respBody, res.APIPropertyNames)
@@ -73,7 +126,72 @@ func (c *crudClient) del(ctx context.Context, res spec.ResourceDef, id string, s
 	if err != nil && !isNotFound(err) {
 		return fmt.Errorf("delete %s: %w", res.Name, err)
 	}
+
+	if c.pollingEnabled {
+		if err := c.waitUntilGone(ctx, res, id, state); err != nil {
+			return fmt.Errorf("delete %s: %w", res.Name, err)
+		}
+	}
 	return nil
+}
+
+// waitUntilExists polls the read endpoint until the resource returns a non-empty response
+// or the polling timeout is reached.
+func (c *crudClient) waitUntilExists(ctx context.Context, res spec.ResourceDef, id string, state map[string]interface{}) error {
+	return c.pollUntil(ctx, func() (bool, error) {
+		outputs, err := c.read(ctx, res, id, state)
+		if err != nil {
+			return false, err
+		}
+		return outputs.Len() > 0, nil
+	}, fmt.Sprintf("timed out waiting for %s %q to exist", res.Name, id))
+}
+
+// waitUntilGone polls the read endpoint until the resource returns 404 (empty outputs)
+// or the polling timeout is reached.
+func (c *crudClient) waitUntilGone(ctx context.Context, res spec.ResourceDef, id string, state map[string]interface{}) error {
+	return c.pollUntil(ctx, func() (bool, error) {
+		outputs, err := c.read(ctx, res, id, state)
+		if err != nil {
+			return false, err
+		}
+		return outputs.Len() == 0, nil
+	}, fmt.Sprintf("timed out waiting for %s %q to be deleted", res.Name, id))
+}
+
+// pollUntil runs condition in a backoff loop until it returns true, the timeout expires,
+// or ctx is cancelled.
+func (c *crudClient) pollUntil(ctx context.Context, condition func() (bool, error), timeoutMsg string) error {
+	deadline := time.Now().Add(c.polling.Timeout)
+	interval := c.polling.InitialInterval
+	for {
+		done, err := condition()
+		if err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return fmt.Errorf("%s", timeoutMsg)
+		}
+		sleep := interval
+		if sleep > remaining {
+			sleep = remaining
+		}
+		timer := time.NewTimer(sleep)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+		interval = time.Duration(float64(interval) * c.polling.Multiplier)
+		if interval > c.polling.MaxInterval {
+			interval = c.polling.MaxInterval
+		}
+	}
 }
 
 // request performs an HTTP call with a JSON body and returns the decoded response.
@@ -334,11 +452,10 @@ func setID(outputs property.Map, idField, id string) property.Map {
 }
 
 // handleCreate performs a create operation using the CRUD client.
-func handleCreate(ctx context.Context, res spec.ResourceDef, req p.CreateRequest, cfg *config.ProviderConfig) (p.CreateResponse, error) {
+func handleCreate(ctx context.Context, res spec.ResourceDef, req p.CreateRequest, client *crudClient) (p.CreateResponse, error) {
 	if req.DryRun {
 		return p.CreateResponse{ID: "", Properties: req.Properties}, nil
 	}
-	client := &crudClient{cfg: cfg}
 	id, outputs, err := client.create(ctx, res, req.Properties)
 	if err != nil {
 		return p.CreateResponse{}, err
@@ -371,8 +488,7 @@ func handleUpdate(ctx context.Context, res spec.ResourceDef, req p.UpdateRequest
 }
 
 // handleDelete performs a delete operation using the CRUD client.
-func handleDelete(ctx context.Context, res spec.ResourceDef, req p.DeleteRequest, cfg *config.ProviderConfig) error {
-	client := &crudClient{cfg: cfg}
+func handleDelete(ctx context.Context, res spec.ResourceDef, req p.DeleteRequest, client *crudClient) error {
 	state := propertyMapToGoMap(req.Properties)
 	return client.del(ctx, res, req.ID, state)
 }

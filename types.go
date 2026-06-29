@@ -1,6 +1,9 @@
 package openapi
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
 
 // Options configures an OpenAPI-based Pulumi provider.
 type Options struct {
@@ -23,6 +26,30 @@ type Options struct {
 	// standard conventions. If nil, defaults apply ("Authorization" header, "bearer" prefix).
 	// Only available in library (code) mode; ignored by the parameterized provider.
 	AuthOverride *AuthOverride
+	// DisablePolling skips the post-create and post-delete readiness checks.
+	// By default the provider polls the read endpoint after create (until the resource
+	// exists) and after delete (until the resource is gone).
+	DisablePolling bool
+	// PollingOptions tunes the backoff and timeout used during polling.
+	// Zero values use the defaults: 5 min timeout, 1 s initial interval, 30 s max, 1.5× multiplier.
+	PollingOptions PollingOptions
+}
+
+// PollingOptions controls how the provider waits for resources to reach a stable state
+// after create and delete operations.
+type PollingOptions struct {
+	// Timeout is the maximum time to wait before declaring the operation failed.
+	// Default: 5 minutes.
+	Timeout time.Duration
+	// InitialInterval is the delay before the first poll.
+	// Default: 1 second.
+	InitialInterval time.Duration
+	// MaxInterval caps the delay between polls as the backoff grows.
+	// Default: 30 seconds.
+	MaxInterval time.Duration
+	// Multiplier is the factor by which the interval grows after each poll.
+	// Default: 1.5.
+	Multiplier float64
 }
 
 // AuthOverride lets provider authors override the HTTP header name and/or token prefix
