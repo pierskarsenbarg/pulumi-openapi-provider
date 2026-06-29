@@ -42,12 +42,18 @@ func resourceSpec(res ResourceDef) pschema.ResourceSpec {
 		}
 	}
 
+	deprecationMessage := ""
+	if res.Deprecated {
+		deprecationMessage = "This resource is deprecated."
+	}
+
 	return pschema.ResourceSpec{
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
 			Properties: allOutputProps,
 		},
-		InputProperties: res.InputSchema,
-		RequiredInputs:  res.RequiredInputs,
+		InputProperties:    res.InputSchema,
+		RequiredInputs:     res.RequiredInputs,
+		DeprecationMessage: deprecationMessage,
 	}
 }
 

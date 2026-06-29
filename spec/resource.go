@@ -36,6 +36,7 @@ type ResourceDef struct {
 	DeletePath   string // e.g. "/pet/{petId}"
 	IDPathParam  string // path param name used as resource ID, e.g. "petId"
 	IDField      string // JSON field name holding the server-assigned ID, e.g. "id"
+	Deprecated   bool   // true if the create operation is marked deprecated in the spec
 
 	InputSchema      map[string]pschema.PropertySpec
 	OutputSchema     map[string]pschema.PropertySpec
@@ -545,6 +546,7 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 		DeletePath:       g.itemPath,
 		IDPathParam:      idPathParam,
 		IDField:          idField,
+		Deprecated:       createOp.Deprecated,
 		InputSchema:      inputs,
 		OutputSchema:     outputs,
 		RequiredInputs:   requiredInputs,
@@ -1239,6 +1241,7 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 		DeletePath:       g.itemPath,
 		IDPathParam:      idPathParam,
 		IDField:          idField,
+		Deprecated:       createOp.Deprecated != nil && *createOp.Deprecated,
 		InputSchema:      inputs,
 		OutputSchema:     outputs,
 		RequiredInputs:   requiredInputs,
