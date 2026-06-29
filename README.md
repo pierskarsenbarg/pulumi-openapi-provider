@@ -192,6 +192,22 @@ pulumi config set myprovider:baseUrl https://api.example.com
 
 To supply a fixed base URL at build time rather than leaving it to users, set `Options.BaseURL`.
 
+### Non-standard auth conventions
+
+Some APIs accept a token but don't follow standard header or prefix conventions — for example using `X-Auth-Token` instead of `Authorization`, or `token <value>` instead of `bearer <value>`. Use `Options.AuthOverride` to handle this at build time (library mode only; not available in the parameterized provider):
+
+```go
+openapi.Options{
+    SpecURL: "https://api.example.com/openapi.json",
+    AuthOverride: &openapi.AuthOverride{
+        HeaderName:  "X-Auth-Token", // default: "Authorization"
+        TokenPrefix: "token",        // default: "bearer"; set to "" to send the raw token
+    },
+}
+```
+
+Both fields are optional — set only the ones you need. The credential value itself is always supplied by the end-user via `pulumi config set` at runtime.
+
 ## Adding resources not in the spec
 
 Use `WithResources` to add hand-crafted [`infer`](https://github.com/pulumi/pulumi-go-provider/tree/main/infer) resources alongside the spec-derived ones:
