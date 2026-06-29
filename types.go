@@ -19,6 +19,22 @@ type Options struct {
 	// excluded from discovery. Any resource whose CRUD operations include at least
 	// one matching tag is skipped entirely.
 	ExcludeTags []string
+	// AuthOverride overrides how the bearer token is sent when the API does not follow
+	// standard conventions. If nil, defaults apply ("Authorization" header, "bearer" prefix).
+	// Only available in library (code) mode; ignored by the parameterized provider.
+	AuthOverride *AuthOverride
+}
+
+// AuthOverride lets provider authors override the HTTP header name and/or token prefix
+// used when sending credentials to APIs that deviate from standard conventions.
+// The credential value itself is always supplied by the Pulumi end-user at runtime.
+type AuthOverride struct {
+	// HeaderName is the HTTP header to use instead of "Authorization".
+	// Leave empty to keep the default.
+	HeaderName string
+	// TokenPrefix is the string prepended to the token value (e.g. "token" produces
+	// "token <value>"). Set to "" to send the raw token with no prefix.
+	TokenPrefix string
 }
 
 // ResourceOverride customizes how a discovered resource maps to Pulumi operations.

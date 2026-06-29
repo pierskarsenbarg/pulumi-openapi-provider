@@ -20,21 +20,26 @@ type AuthScheme struct {
 
 // ProviderConfig holds runtime provider configuration including auth and base URL.
 type ProviderConfig struct {
-	mu           sync.RWMutex
-	BaseURL      string
-	authSchemes  []AuthScheme
-	schemeValues map[string]string // configVar → runtime value
-	httpClient   *http.Client
+	mu                  sync.RWMutex
+	BaseURL             string
+	authSchemes         []AuthScheme
+	schemeValues        map[string]string // configVar → runtime value
+	httpClient          *http.Client
+	authHeaderOverride  string  // custom header name; empty = use default
+	tokenPrefixOverride *string // custom prefix; nil = use default; pointer to allow empty string
 }
 
 // New creates a ProviderConfig with an optional custom HTTP client, default base URL,
 // and the auth schemes discovered from the spec.
-func New(client *http.Client, defaultBaseURL string, schemes []AuthScheme) *ProviderConfig {
+// authHeaderOverride and tokenPrefixOverride are optional: pass "" / nil to use defaults.
+func New(client *http.Client, defaultBaseURL string, schemes []AuthScheme, authHeaderOverride string, tokenPrefixOverride *string) *ProviderConfig {
 	return &ProviderConfig{
-		httpClient:   client,
-		BaseURL:      defaultBaseURL,
-		authSchemes:  schemes,
-		schemeValues: map[string]string{},
+		httpClient:          client,
+		BaseURL:             defaultBaseURL,
+		authSchemes:         schemes,
+		schemeValues:        map[string]string{},
+		authHeaderOverride:  authHeaderOverride,
+		tokenPrefixOverride: tokenPrefixOverride,
 	}
 }
 
@@ -97,7 +102,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 			headers[h] = key
 		}
 		if token := c.schemeValues["bearerToken"]; token != "" {
-			headers["Authorization"] = "bearer " + token
+			headers[c.bearerHeader()] = c.bearerValue(token)
 		}
 		return headers
 	}
@@ -116,7 +121,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 		case "bearer":
 			val := c.schemeValues[s.ConfigVar]
 			if val != "" {
-				headers["Authorization"] = "bearer " + val
+				headers[c.bearerHeader()] = c.bearerValue(val)
 			}
 		case "basic":
 			user := c.schemeValues["username"]
@@ -128,6 +133,24 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 		}
 	}
 	return headers
+}
+
+func (c *ProviderConfig) bearerHeader() string {
+	if c.authHeaderOverride != "" {
+		return c.authHeaderOverride
+	}
+	return "Authorization"
+}
+
+func (c *ProviderConfig) bearerValue(token string) string {
+	prefix := "bearer"
+	if c.tokenPrefixOverride != nil {
+		prefix = *c.tokenPrefixOverride
+	}
+	if prefix == "" {
+		return token
+	}
+	return prefix + " " + token
 }
 
 // GetBaseURL returns the current base URL.
