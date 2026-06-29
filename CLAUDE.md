@@ -119,9 +119,24 @@ Both `typeCollector` (V2) and `typeCollectorV3` (V3) handle enums in two places:
 - `spec.AuthScheme` — a single security scheme discovered from the spec: kind (`"apiKey"`, `"bearer"`, `"basic"`), config var name, header/query param name
 - `spec.DiscoveryResult` — slice of `ResourceDef` + shared types map + default base URL + `[]AuthScheme`
 - `config.AuthScheme` — runtime mirror of `spec.AuthScheme`; held by `ProviderConfig` to drive `Apply` and `AuthHeaders`
-- `config.ProviderConfig` — thread-safe holder for base URL and scheme values; `Apply` reads config vars named by each scheme; `AuthHeaders` builds the HTTP header map
-- `openapi.Options` / `openapi.ResourceOverride` — public API surface for library provider authors
+- `config.ProviderConfig` — thread-safe holder for base URL, scheme values, and optional auth overrides; `Apply` reads config vars named by each scheme; `AuthHeaders` builds the HTTP header map (respects `authHeaderOverride` / `tokenPrefixOverride` when set)
+- `openapi.Options` / `openapi.ResourceOverride` / `openapi.AuthOverride` — public API surface for library provider authors
 - `openapi.parameterizedProvider` / `openapi.paramState` — internal types for the parameterized binary; not part of the library API
+
+### Auth overrides (`openapi.AuthOverride`)
+
+`Options.AuthOverride` is a library-mode-only escape hatch for APIs that deviate from standard bearer auth conventions. It has no effect on the parameterized provider.
+
+```go
+openapi.Options{
+    AuthOverride: &openapi.AuthOverride{
+        HeaderName:  "X-Auth-Token", // replaces "Authorization"; leave empty to keep default
+        TokenPrefix: "token",        // replaces "bearer"; set to "" for no prefix
+    },
+}
+```
+
+`config.New` receives the resolved header and prefix as `authHeaderOverride string` / `tokenPrefixOverride *string` (pointer so an empty string is distinguishable from "not set"). The helpers `bearerHeader()` / `bearerValue()` on `ProviderConfig` centralise the logic and are called from both the scheme-based bearer path and the legacy fallback `bearerToken` path in `AuthHeaders()`.
 
 ### Reference
 
