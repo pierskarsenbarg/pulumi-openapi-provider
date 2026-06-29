@@ -1631,3 +1631,80 @@ func TestDiscover_NetBox(t *testing.T) {
 	}
 	t.Logf("discovered %d resources from NetBox", len(result.Resources))
 }
+
+var oas3ApiPrefix = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0.0"},
+  "paths": {
+    "/api/widgets": {
+      "post": {
+        "operationId": "createWidget",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}
+        },
+        "responses": {"201": {"description": "created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      }
+    },
+    "/api/widgets/{widgetId}": {
+      "get": {
+        "operationId": "getWidget",
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}
+      },
+      "delete": {
+        "operationId": "deleteWidget",
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"204": {"description": "deleted"}}
+      }
+    },
+    "/extras/gadgets": {
+      "post": {
+        "operationId": "createGadget",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Gadget"}}}
+        },
+        "responses": {"201": {"description": "created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Gadget"}}}}}
+      }
+    },
+    "/extras/gadgets/{gadgetId}": {
+      "get": {
+        "operationId": "getGadget",
+        "parameters": [{"name": "gadgetId", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Gadget"}}}}}
+      },
+      "delete": {
+        "operationId": "deleteGadget",
+        "parameters": [{"name": "gadgetId", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"204": {"description": "deleted"}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {"type": "object", "properties": {"name": {"type": "string"}}},
+      "Gadget":  {"type": "object", "properties": {"name": {"type": "string"}}}
+    }
+  }
+}`
+
+func TestDiscover_ApiPrefixStripped(t *testing.T) {
+	result := loadInline(t, oas3ApiPrefix)
+
+	if len(result.Resources) != 2 {
+		t.Fatalf("expected 2 resources, got %d", len(result.Resources))
+	}
+
+	byName := map[string]bool{}
+	for _, r := range result.Resources {
+		byName[r.Name] = true
+	}
+
+	if !byName["Widgets"] {
+		t.Errorf("expected resource named Widgets (api prefix stripped), got names: %v", byName)
+	}
+	if !byName["ExtrasGadgets"] {
+		t.Errorf("expected resource named ExtrasGadgets (non-api prefix kept), got names: %v", byName)
+	}
+}

@@ -273,7 +273,11 @@ func groupPathStrings(paths []string) []pathGroup {
 		parentSegs := segs[:len(segs)-1]
 		collectionPath := "/" + strings.Join(parentSegs, "/")
 
-		name := buildNameFromSegs(parentSegs)
+		nameSegs := parentSegs
+		if len(nameSegs) > 0 && nameSegs[0] == "api" {
+			nameSegs = nameSegs[1:]
+		}
+		name := buildNameFromSegs(nameSegs)
 		if name == "" {
 			continue
 		}
