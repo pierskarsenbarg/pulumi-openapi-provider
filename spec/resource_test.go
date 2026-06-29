@@ -1,6 +1,7 @@
 package spec_test
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -1491,5 +1492,54 @@ func TestDiscover_V3_DeprecatedResource(t *testing.T) {
 	}
 	if gadgets.Deprecated {
 		t.Error("Gadgets.Deprecated = true, want false (create op is not deprecated)")
+	}
+}
+
+func TestBuildSchema_DeprecatedResource(t *testing.T) {
+	result := loadInline(t, swaggerDeprecated)
+
+	schema, err := spec.BuildSchema("test", "0.1.0", result)
+	if err != nil {
+		t.Fatalf("BuildSchema: %v", err)
+	}
+
+	// Widgets was created with deprecated:true — its schema entry must carry deprecationMessage.
+	if !strings.Contains(schema, `"deprecationMessage"`) {
+		t.Error("schema JSON missing deprecationMessage for deprecated resource")
+	}
+
+	// Gadgets was not deprecated — its token must not carry deprecationMessage.
+	// Parse just enough to find the Gadgets resource block.
+	var parsed struct {
+		Resources map[string]struct {
+			DeprecationMessage string `json:"deprecationMessage"`
+		} `json:"resources"`
+	}
+	if err := json.Unmarshal([]byte(schema), &parsed); err != nil {
+		t.Fatalf("unmarshal schema: %v", err)
+	}
+
+	var widgetsToken, gadgetsToken string
+	for tok := range parsed.Resources {
+		if strings.HasSuffix(tok, ":Widgets") {
+			widgetsToken = tok
+		}
+		if strings.HasSuffix(tok, ":Gadgets") {
+			gadgetsToken = tok
+		}
+	}
+
+	if widgetsToken == "" {
+		t.Fatal("Widgets resource not found in schema")
+	}
+	if gadgetsToken == "" {
+		t.Fatal("Gadgets resource not found in schema")
+	}
+
+	if parsed.Resources[widgetsToken].DeprecationMessage == "" {
+		t.Errorf("Widgets resource has no deprecationMessage in schema")
+	}
+	if parsed.Resources[gadgetsToken].DeprecationMessage != "" {
+		t.Errorf("Gadgets resource has unexpected deprecationMessage %q", parsed.Resources[gadgetsToken].DeprecationMessage)
 	}
 }
