@@ -1,6 +1,7 @@
 package spec_test
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -1314,5 +1315,231 @@ func TestEnum_V3_NamedEnum(t *testing.T) {
 	wantRef := "#/types/test:index:WidgetStatus"
 	if prop.TypeSpec.Ref != wantRef {
 		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Deprecated operation tests
+// ---------------------------------------------------------------------------
+
+const swaggerDeprecated = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "basePath": "/",
+  "paths": {
+    "/widgets": {
+      "post": {
+        "deprecated": true,
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    },
+    "/gadgets": {
+      "post": {
+        "parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+        "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}
+      }
+    },
+    "/gadgets/{gadgetId}": {
+      "get": {
+        "parameters": [{"in": "path", "name": "gadgetId", "required": true, "type": "string"}],
+        "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}
+      },
+      "delete": {
+        "parameters": [{"in": "path", "name": "gadgetId", "required": true, "type": "string"}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "definitions": {
+    "Widget": {"type": "object", "properties": {"name": {"type": "string"}}}
+  }
+}`
+
+func TestDiscover_V2_DeprecatedResource(t *testing.T) {
+	result := loadInline(t, swaggerDeprecated)
+
+	byName := map[string]spec.ResourceDef{}
+	for _, r := range result.Resources {
+		byName[r.Name] = r
+	}
+
+	widgets, ok := byName["Widgets"]
+	if !ok {
+		t.Fatal("expected Widgets resource to be discovered")
+	}
+	if !widgets.Deprecated {
+		t.Error("Widgets.Deprecated = false, want true (create op is deprecated)")
+	}
+
+	gadgets, ok := byName["Gadgets"]
+	if !ok {
+		t.Fatal("expected Gadgets resource to be discovered")
+	}
+	if gadgets.Deprecated {
+		t.Error("Gadgets.Deprecated = true, want false (create op is not deprecated)")
+	}
+}
+
+const oas3Deprecated = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "servers": [{"url": "https://api.example.com"}],
+  "paths": {
+    "/widgets": {
+      "post": {
+        "deprecated": true,
+        "requestBody": {
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+            }
+          }
+        }
+      }
+    },
+    "/widgets/{widgetId}": {
+      "get": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [{"name": "widgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    },
+    "/gadgets": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+            }
+          }
+        }
+      }
+    },
+    "/gadgets/{gadgetId}": {
+      "get": {
+        "parameters": [{"name": "gadgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [{"name": "gadgetId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Widget": {"type": "object", "properties": {"name": {"type": "string"}}}
+    }
+  }
+}`
+
+func TestDiscover_V3_DeprecatedResource(t *testing.T) {
+	result := loadInline(t, oas3Deprecated)
+
+	byName := map[string]spec.ResourceDef{}
+	for _, r := range result.Resources {
+		byName[r.Name] = r
+	}
+
+	widgets, ok := byName["Widgets"]
+	if !ok {
+		t.Fatal("expected Widgets resource to be discovered")
+	}
+	if !widgets.Deprecated {
+		t.Error("Widgets.Deprecated = false, want true (create op is deprecated)")
+	}
+
+	gadgets, ok := byName["Gadgets"]
+	if !ok {
+		t.Fatal("expected Gadgets resource to be discovered")
+	}
+	if gadgets.Deprecated {
+		t.Error("Gadgets.Deprecated = true, want false (create op is not deprecated)")
+	}
+}
+
+func TestBuildSchema_DeprecatedResource(t *testing.T) {
+	result := loadInline(t, swaggerDeprecated)
+
+	schema, err := spec.BuildSchema("test", "0.1.0", result)
+	if err != nil {
+		t.Fatalf("BuildSchema: %v", err)
+	}
+
+	// Widgets was created with deprecated:true — its schema entry must carry deprecationMessage.
+	if !strings.Contains(schema, `"deprecationMessage"`) {
+		t.Error("schema JSON missing deprecationMessage for deprecated resource")
+	}
+
+	// Gadgets was not deprecated — its token must not carry deprecationMessage.
+	// Parse just enough to find the Gadgets resource block.
+	var parsed struct {
+		Resources map[string]struct {
+			DeprecationMessage string `json:"deprecationMessage"`
+		} `json:"resources"`
+	}
+	if err := json.Unmarshal([]byte(schema), &parsed); err != nil {
+		t.Fatalf("unmarshal schema: %v", err)
+	}
+
+	var widgetsToken, gadgetsToken string
+	for tok := range parsed.Resources {
+		if strings.HasSuffix(tok, ":Widgets") {
+			widgetsToken = tok
+		}
+		if strings.HasSuffix(tok, ":Gadgets") {
+			gadgetsToken = tok
+		}
+	}
+
+	if widgetsToken == "" {
+		t.Fatal("Widgets resource not found in schema")
+	}
+	if gadgetsToken == "" {
+		t.Fatal("Gadgets resource not found in schema")
+	}
+
+	if parsed.Resources[widgetsToken].DeprecationMessage == "" {
+		t.Errorf("Widgets resource has no deprecationMessage in schema")
+	}
+	if parsed.Resources[gadgetsToken].DeprecationMessage != "" {
+		t.Errorf("Gadgets resource has unexpected deprecationMessage %q", parsed.Resources[gadgetsToken].DeprecationMessage)
 	}
 }
