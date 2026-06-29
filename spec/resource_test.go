@@ -1615,6 +1615,90 @@ func TestDiscover_TrailingSlashPaths(t *testing.T) {
 	}
 }
 
+// oas3TrailingSlashNested exercises the case where every path ends with "/" and
+// a shallower item path (e.g. /orgs/{orgId}/) is the collection for a deeper
+// resource (/orgs/{orgId}/teams/{teamId}/). Without normalising the trailing
+// slash before the claimedCollection check, the shallower path is not suppressed
+// and a duplicate / invalid group is emitted.
+const oas3TrailingSlashNested = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "paths": {
+    "/orgs/": {
+      "post": {
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Org"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Org"}}}}}
+      }
+    },
+    "/orgs/{orgId}/": {
+      "get": {
+        "parameters": [{"name": "orgId", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Org"}}}}}
+      },
+      "delete": {
+        "parameters": [{"name": "orgId", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"204": {}}
+      },
+      "post": {
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}}
+      }
+    },
+    "/orgs/{orgId}/teams/": {
+      "post": {
+        "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}},
+        "responses": {"201": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}}
+      }
+    },
+    "/orgs/{orgId}/teams/{teamId}/": {
+      "get": {
+        "parameters": [
+          {"name": "orgId",  "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "teamId", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}}
+      },
+      "delete": {
+        "parameters": [
+          {"name": "orgId",  "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "teamId", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {"204": {}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Org":  {"type": "object", "properties": {"name": {"type": "string"}}},
+      "Team": {"type": "object", "properties": {"name": {"type": "string"}}}
+    }
+  }
+}`
+
+func TestDiscover_TrailingSlashNestedPaths(t *testing.T) {
+	result := loadInline(t, oas3TrailingSlashNested)
+
+	names := map[string]bool{}
+	for _, r := range result.Resources {
+		names[r.Name] = true
+	}
+
+	// Orgs should be discovered as a top-level resource.
+	if !names["Orgs"] {
+		t.Errorf("expected resource Orgs, got %v", names)
+	}
+	// OrgsTeams should be discovered as a nested resource.
+	if !names["OrgsTeams"] {
+		t.Errorf("expected resource OrgsTeams, got %v", names)
+	}
+	// There should be exactly 2 resources — /orgs/{orgId}/ must not also be
+	// emitted as a standalone item because it was claimed as the collection
+	// for /orgs/{orgId}/teams/{teamId}/.
+	if len(result.Resources) != 2 {
+		t.Errorf("expected exactly 2 resources, got %d: %v", len(result.Resources), names)
+	}
+}
+
 func TestDiscover_NetBox(t *testing.T) {
 	doc, err := spec.Load("http://localhost:8000/api/schema/", "")
 	if err != nil {
