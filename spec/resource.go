@@ -665,6 +665,17 @@ func filterRequired(required []string, exclude string) []string {
 	return out
 }
 
+func toCamelCaseSlice(s []string) []string {
+	if len(s) == 0 {
+		return s
+	}
+	out := make([]string, len(s))
+	for i, v := range s {
+		out[i] = toCamelCase(v)
+	}
+	return out
+}
+
 func removeFromSlice(s []string, val string) []string {
 	var out []string
 	for _, v := range s {
@@ -962,6 +973,11 @@ func (tc *typeCollector) arrayItemSpec(schema *highbase.Schema, defs *v2high.Def
 	if len(itemSchema.Type) == 0 {
 		return pschema.TypeSpec{Type: "string"}
 	}
+	// Nested arrays (array-of-arrays) are not representable without inner items;
+	// fall back to string to keep the schema valid.
+	if itemSchema.Type[0] == "array" {
+		return pschema.TypeSpec{Type: "string"}
+	}
 	return pschema.TypeSpec{Type: itemSchema.Type[0]}
 }
 
@@ -1012,7 +1028,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 			Type:        "object",
 			Description: defSchema.Description,
 			Properties:  props,
-			Required:    defSchema.Required,
+			Required:    toCamelCaseSlice(defSchema.Required),
 		},
 	}
 }
@@ -1275,7 +1291,18 @@ func requestBodySchemaV3(op *v3high.Operation, components *v3high.Components) *h
 		return nil
 	}
 	if mt, ok := op.RequestBody.Content.Get("application/json"); ok && mt.Schema != nil {
-		return resolveSchemaV3(mt.Schema, components)
+		schema := resolveSchemaV3(mt.Schema, components)
+		if schema != nil && (schema.Properties == nil || schema.Properties.Len() == 0) && len(schema.OneOf) > 0 {
+			// APIs like NetBox wrap request bodies in oneOf with a single-object variant
+			// and a bulk-array variant. Pick the first non-array entry.
+			for _, entry := range schema.OneOf {
+				candidate := resolveSchemaV3(entry, components)
+				if candidate != nil && (len(candidate.Type) == 0 || candidate.Type[0] != "array") {
+					return candidate
+				}
+			}
+		}
+		return schema
 	}
 	return nil
 }
@@ -1408,6 +1435,11 @@ func (tc *typeCollectorV3) arrayItemSpec(schema *highbase.Schema) pschema.TypeSp
 		}
 	}
 	if s := itemProxy.Schema(); s != nil && len(s.Type) > 0 {
+		// Nested arrays (array-of-arrays) are not representable without inner items;
+		// fall back to string to keep the schema valid.
+		if s.Type[0] == "array" {
+			return pschema.TypeSpec{Type: "string"}
+		}
 		return pschema.TypeSpec{Type: s.Type[0]}
 	}
 	return pschema.TypeSpec{Type: "string"}
@@ -1457,7 +1489,7 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 			Type:        "object",
 			Description: schema.Description,
 			Properties:  props,
-			Required:    schema.Required,
+			Required:    toCamelCaseSlice(schema.Required),
 		},
 	}
 }
