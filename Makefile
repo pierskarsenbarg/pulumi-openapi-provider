@@ -6,7 +6,7 @@ EXAMPLES     := $(notdir $(EXAMPLE_DIRS))
 
 .SECONDARY:
 
-.PHONY: build build-provider test tidy build-examples schema gen-sdk clean \
+.PHONY: build build-provider test lint tidy build-examples schema gen-sdk clean \
         $(addprefix schema-, $(EXAMPLES)) \
         $(addprefix gen-sdk-, $(EXAMPLES))
 
@@ -15,6 +15,9 @@ build:
 
 build-provider:
 	go build -o bin/pulumi-resource-openapi-provider ./cmd/openapi-provider
+
+lint:
+	golangci-lint run ./...
 
 test:
 	$(GO_TEST) ./...
