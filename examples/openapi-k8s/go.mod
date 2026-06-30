@@ -1,4 +1,4 @@
-module github.com/pierskarsenbarg/pulumi-openapi-provider/examples/kubernetes
+module github.com/pierskarsenbarg/pulumi-openapi-provider/examples/openapi-l8s
 
 go 1.26.4
 
