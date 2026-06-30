@@ -8,7 +8,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
+	p "github.com/pulumi/pulumi-go-provider"
 	"github.com/pulumi/pulumi-go-provider/infer"
 
 	openapi "github.com/pierskarsenbarg/pulumi-openapi-provider"
@@ -92,6 +94,11 @@ func main() {
 	ctx := context.Background()
 	builder, err := openapi.NewProviderBuilder("testapi", "0.1.0", openapi.Options{
 		SpecURL: "http://localhost:3000/openapi",
+		Overrides: map[string]openapi.ResourceOverride{
+			"Users": {
+				Check: userEmailCheck,
+			},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -101,4 +108,18 @@ func main() {
 		Run(ctx); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func userEmailCheck(ctx context.Context, req p.CheckRequest) (p.CheckResponse, error) {
+	email, ok := req.Inputs.GetOk("email")
+	if ok && email.IsString() && !strings.Contains(email.AsString(), "@") {
+		return p.CheckResponse{
+			Inputs: req.Inputs,
+			Failures: []p.CheckFailure{{
+				Property: "email",
+				Reason:   "email must contain @",
+			}},
+		}, nil
+	}
+	return p.CheckResponse{Inputs: req.Inputs}, nil
 }
