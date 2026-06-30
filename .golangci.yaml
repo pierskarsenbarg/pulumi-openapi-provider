@@ -13,6 +13,8 @@ linters:
     - unconvert
     - usetesting
   settings:
+    lll:
+      line-length: 160
     usetesting:
       os-temp-dir: true
       context-background: true
@@ -24,6 +26,15 @@ linters:
             - '**/internal/**'
   exclusions:
     generated: lax
+    rules:
+      - linters:
+          - goconst
+          - lll
+        path: "_test\\.go"
+      - linters:
+          - gosec
+        text: "G101"
+        path: "_test\\.go"
     paths:
       - vendor$
       - third_party$

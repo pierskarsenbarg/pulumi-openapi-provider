@@ -1,3 +1,4 @@
+// Package runtime implements CRUD dispatch and HTTP client logic for OpenAPI-backed providers.
 package runtime
 
 import (
