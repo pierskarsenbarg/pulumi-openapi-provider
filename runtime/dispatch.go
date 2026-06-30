@@ -12,8 +12,9 @@ import (
 )
 
 // Build constructs a p.Provider that dispatches CRUD calls to the appropriate HTTP endpoints
-// based on the discovered resource definitions.
-func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.ProviderConfig, pollingEnabled bool, polling PollingConfig) p.Provider {
+// based on the discovered resource definitions. hooks is keyed by Pulumi token and allows
+// per-resource function overrides; nil entries and nil hook fields fall back to built-in behaviour.
+func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.ProviderConfig, pollingEnabled bool, polling PollingConfig, hooks map[string]ResourceHooks) p.Provider {
 	byToken := make(map[string]spec.ResourceDef, len(result.Resources))
 	for _, res := range result.Resources {
 		byToken[res.Token] = res
@@ -37,6 +38,9 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			if err != nil {
 				return p.CheckResponse{}, err
 			}
+			if h, ok := hooks[res.Token]; ok && h.Check != nil {
+				return h.Check(ctx, req)
+			}
 			return handleCheck(ctx, res, req)
 		},
 
@@ -44,6 +48,9 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			res, err := lookupResource(byToken, string(req.Urn))
 			if err != nil {
 				return p.CreateResponse{}, err
+			}
+			if h, ok := hooks[res.Token]; ok && h.Create != nil {
+				return h.Create(ctx, req)
 			}
 			return handleCreate(ctx, res, req, client)
 		},
@@ -53,6 +60,9 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			if err != nil {
 				return p.ReadResponse{}, err
 			}
+			if h, ok := hooks[res.Token]; ok && h.Read != nil {
+				return h.Read(ctx, req)
+			}
 			return handleRead(ctx, res, req, cfg)
 		},
 
@@ -60,6 +70,9 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			res, err := lookupResource(byToken, string(req.Urn))
 			if err != nil {
 				return p.UpdateResponse{}, err
+			}
+			if h, ok := hooks[res.Token]; ok && h.Update != nil {
+				return h.Update(ctx, req)
 			}
 			return handleUpdate(ctx, res, req, cfg)
 		},
@@ -69,10 +82,20 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 			if err != nil {
 				return err
 			}
+			if h, ok := hooks[res.Token]; ok && h.Delete != nil {
+				return h.Delete(ctx, req)
+			}
 			return handleDelete(ctx, res, req, client)
 		},
 
 		Diff: func(ctx context.Context, req p.DiffRequest) (p.DiffResponse, error) {
+			res, err := lookupResource(byToken, string(req.Urn))
+			if err != nil {
+				return p.DiffResponse{}, err
+			}
+			if h, ok := hooks[res.Token]; ok && h.Diff != nil {
+				return h.Diff(ctx, req)
+			}
 			return computeDiff(ctx, req)
 		},
 	}.WithDefaults()

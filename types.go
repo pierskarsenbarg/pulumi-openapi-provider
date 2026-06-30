@@ -1,8 +1,11 @@
 package openapi
 
 import (
+	"context"
 	"net/http"
 	"time"
+
+	p "github.com/pulumi/pulumi-go-provider"
 )
 
 // Options configures an OpenAPI-based Pulumi provider.
@@ -90,4 +93,22 @@ type ResourceOverride struct {
 	// IDField overrides the JSON response field used to extract the resource ID.
 	// Defaults to the IDPathParam name.
 	IDField string
+	// Check replaces the built-in input validation for this resource.
+	// When nil, the default required-field check is used.
+	Check func(ctx context.Context, req p.CheckRequest) (p.CheckResponse, error)
+	// Diff replaces the built-in diff computation for this resource.
+	// When nil, property-level change detection is used.
+	Diff func(ctx context.Context, req p.DiffRequest) (p.DiffResponse, error)
+	// Create replaces the built-in HTTP POST create logic for this resource.
+	// When nil, the spec-derived create endpoint is called.
+	Create func(ctx context.Context, req p.CreateRequest) (p.CreateResponse, error)
+	// Read replaces the built-in HTTP GET read logic for this resource.
+	// When nil, the spec-derived read endpoint is called.
+	Read func(ctx context.Context, req p.ReadRequest) (p.ReadResponse, error)
+	// Update replaces the built-in HTTP PUT/PATCH update logic for this resource.
+	// When nil, the spec-derived update endpoint is called.
+	Update func(ctx context.Context, req p.UpdateRequest) (p.UpdateResponse, error)
+	// Delete replaces the built-in HTTP DELETE logic for this resource.
+	// When nil, the spec-derived delete endpoint is called.
+	Delete func(ctx context.Context, req p.DeleteRequest) error
 }

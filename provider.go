@@ -205,7 +205,8 @@ func buildDynamicProvider(name, version string, opts Options) (p.Provider, error
 	}
 	cfg := config.New(opts.HTTPClient, baseURL, convertAuthSchemes(result.AuthSchemes), authHeaderOverride, tokenPrefixOverride)
 	polling := runtime.ResolvePollingConfig(opts.PollingOptions.Timeout, opts.PollingOptions.InitialInterval, opts.PollingOptions.MaxInterval, opts.PollingOptions.Multiplier)
-	return runtime.Build(name, version, result, cfg, !opts.DisablePolling, polling), nil
+	hooks := buildHooks(result.Resources, opts.Overrides)
+	return runtime.Build(name, version, result, cfg, !opts.DisablePolling, polling, hooks), nil
 }
 
 func convertAuthSchemes(in []spec.AuthScheme) []config.AuthScheme {
@@ -220,6 +221,56 @@ func convertAuthSchemes(in []spec.AuthScheme) []config.AuthScheme {
 		}
 	}
 	return out
+}
+
+// buildHooks extracts per-resource function hooks from the public Overrides map, keyed by
+// Pulumi token. The wildcard key "*" is used as a fallback for any resource without a
+// specific override for that operation.
+func buildHooks(resources []spec.ResourceDef, overrides map[string]ResourceOverride) map[string]runtime.ResourceHooks {
+	if len(overrides) == 0 {
+		return nil
+	}
+	wildcard := overrides["*"]
+	hooks := make(map[string]runtime.ResourceHooks)
+	for _, res := range resources {
+		ov := overrides[res.Name]
+		h := runtime.ResourceHooks{}
+		if ov.Check != nil {
+			h.Check = ov.Check
+		} else {
+			h.Check = wildcard.Check
+		}
+		if ov.Diff != nil {
+			h.Diff = ov.Diff
+		} else {
+			h.Diff = wildcard.Diff
+		}
+		if ov.Create != nil {
+			h.Create = ov.Create
+		} else {
+			h.Create = wildcard.Create
+		}
+		if ov.Read != nil {
+			h.Read = ov.Read
+		} else {
+			h.Read = wildcard.Read
+		}
+		if ov.Update != nil {
+			h.Update = ov.Update
+		} else {
+			h.Update = wildcard.Update
+		}
+		if ov.Delete != nil {
+			h.Delete = ov.Delete
+		} else {
+			h.Delete = wildcard.Delete
+		}
+		if h.Check != nil || h.Diff != nil || h.Create != nil ||
+			h.Read != nil || h.Update != nil || h.Delete != nil {
+			hooks[res.Token] = h
+		}
+	}
+	return hooks
 }
 
 func convertOverrides(in map[string]ResourceOverride) map[string]spec.ResourceOverride {
