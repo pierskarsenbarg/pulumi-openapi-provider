@@ -17,6 +17,8 @@ type Options struct {
 	HTTPClient *http.Client
 	// Overrides customizes how discovered resources map to Pulumi operations.
 	// Keys are the discovered resource names (e.g. "Pet", "StoreOrder").
+	// The special key "*" applies to every resource as a baseline; resource-specific
+	// entries take precedence over it on a field-by-field basis.
 	Overrides map[string]ResourceOverride
 	// ExcludeTags lists OpenAPI operation tags whose associated resources should be
 	// excluded from discovery. Any resource whose CRUD operations include at least

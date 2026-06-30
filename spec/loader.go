@@ -11,9 +11,10 @@ import (
 )
 
 // Load parses an OpenAPI/Swagger spec from either a URL or local file path.
-func Load(specURL, specPath string) (libopenapi.Document, error) {
+// client is used for URL fetches; pass nil to use http.DefaultClient.
+func Load(specURL, specPath string, client *http.Client) (libopenapi.Document, error) {
 	if specURL != "" {
-		return loadFromURL(specURL)
+		return loadFromURL(specURL, client)
 	}
 	if specPath != "" {
 		return loadFromFile(specPath)
@@ -28,7 +29,7 @@ func Load(specURL, specPath string) (libopenapi.Document, error) {
 func LoadSpec(src string) (libopenapi.Document, error) {
 	switch {
 	case strings.HasPrefix(src, "http://"), strings.HasPrefix(src, "https://"):
-		return loadFromURL(src)
+		return loadFromURL(src, nil)
 	case strings.HasPrefix(src, "file://"):
 		return loadFromFile(strings.TrimPrefix(src, "file://"))
 	default:
@@ -36,8 +37,11 @@ func LoadSpec(src string) (libopenapi.Document, error) {
 	}
 }
 
-func loadFromURL(url string) (libopenapi.Document, error) {
-	resp, err := http.Get(url) //nolint:gosec
+func loadFromURL(url string, client *http.Client) (libopenapi.Document, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Get(url) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("fetching spec from %s: %w", url, err)
 	}

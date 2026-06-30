@@ -317,17 +317,35 @@ func substituteAllParams(path, id, idParam string, vals map[string]interface{}) 
 
 // extractID pulls the resource ID from a JSON response map.
 // It tries idField first, then idPathParam, then "id".
+// Keys may use dot notation to traverse nested objects (e.g. "metadata.name").
 func extractID(body map[string]interface{}, idField, idPathParam string) string {
 	candidates := []string{idField, idPathParam, "id"}
 	for _, key := range candidates {
 		if key == "" {
 			continue
 		}
-		if v, ok := body[key]; ok {
-			return fmt.Sprintf("%v", v)
+		if v := nestedGet(body, key); v != "" {
+			return v
 		}
 	}
 	return ""
+}
+
+// nestedGet resolves a dot-separated key path into a map, e.g. "metadata.name".
+func nestedGet(m map[string]interface{}, path string) string {
+	parts := strings.SplitN(path, ".", 2)
+	v, ok := m[parts[0]]
+	if !ok {
+		return ""
+	}
+	if len(parts) == 1 {
+		return fmt.Sprintf("%v", v)
+	}
+	nested, ok := v.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	return nestedGet(nested, parts[1])
 }
 
 // propertyMapToAPIBody converts a property.Map to a plain Go map, translating camelCase

@@ -1,6 +1,10 @@
 package spec_test
 
 import (
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -14,7 +18,7 @@ func TestLoad_RejectsNonOpenAPIDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := spec.Load("", path)
+	_, err := spec.Load("", path, nil)
 	if err == nil {
 		t.Fatal("expected error for non-OpenAPI document, got nil")
 	}
@@ -33,7 +37,7 @@ paths: {}
 		t.Fatal(err)
 	}
 
-	_, err := spec.Load("", path)
+	_, err := spec.Load("", path, nil)
 	if err != nil {
 		t.Fatalf("expected no error for valid Swagger 2.0 spec, got: %v", err)
 	}
@@ -52,8 +56,74 @@ paths: {}
 		t.Fatal(err)
 	}
 
-	_, err := spec.Load("", path)
+	_, err := spec.Load("", path, nil)
 	if err != nil {
 		t.Fatalf("expected no error for valid OAS3 spec, got: %v", err)
 	}
 }
+
+var simpleSwaggerSpec = []byte(`swagger: "2.0"
+info:
+  title: Test API
+  version: "1.0"
+paths: {}
+`)
+
+func TestLoad_URL_UsesNilClientSuccessfully(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/yaml")
+		w.Write(simpleSwaggerSpec) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	_, err := spec.Load(srv.URL, "", nil)
+	if err != nil {
+		t.Fatalf("expected no error with nil client, got: %v", err)
+	}
+}
+
+func TestLoad_URL_UsesProvidedClient(t *testing.T) {
+	requested := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requested = true
+		w.Header().Set("Content-Type", "application/yaml")
+		w.Write(simpleSwaggerSpec) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	seen := false
+	client := &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			seen = true
+			return http.DefaultTransport.RoundTrip(r)
+		}),
+	}
+
+	_, err := spec.Load(srv.URL, "", client)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !requested {
+		t.Fatal("test server was never called")
+	}
+	if !seen {
+		t.Fatal("custom transport was not used")
+	}
+}
+
+func TestLoad_URL_PropagatesClientError(t *testing.T) {
+	client := &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return nil, &net.OpError{Op: "dial", Err: fmt.Errorf("connection refused")}
+		}),
+	}
+
+	_, err := spec.Load("http://127.0.0.1:1/openapi.yaml", "", client)
+	if err == nil {
+		t.Fatal("expected error from failing client, got nil")
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

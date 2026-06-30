@@ -89,6 +89,46 @@ func TestExtractID_NotFound(t *testing.T) {
 	}
 }
 
+func TestExtractID_DotNotation(t *testing.T) {
+	body := map[string]any{
+		"metadata": map[string]any{"name": "my-namespace"},
+	}
+	got := extractID(body, "metadata.name", "name")
+	if got != "my-namespace" {
+		t.Errorf("got %q, want my-namespace", got)
+	}
+}
+
+func TestExtractID_DotNotationDeep(t *testing.T) {
+	body := map[string]any{
+		"a": map[string]any{
+			"b": map[string]any{"c": "deep-value"},
+		},
+	}
+	got := extractID(body, "a.b.c", "")
+	if got != "deep-value" {
+		t.Errorf("got %q, want deep-value", got)
+	}
+}
+
+func TestExtractID_DotNotationMissingKey(t *testing.T) {
+	body := map[string]any{
+		"metadata": map[string]any{"uid": "abc"},
+	}
+	got := extractID(body, "metadata.name", "")
+	if got != "" {
+		t.Errorf("got %q, want empty string", got)
+	}
+}
+
+func TestExtractID_DotNotationNonMapIntermediate(t *testing.T) {
+	body := map[string]any{"metadata": "not-a-map"}
+	got := extractID(body, "metadata.name", "")
+	if got != "" {
+		t.Errorf("got %q, want empty string", got)
+	}
+}
+
 // --- propertyMapToGoMap / goMapToPropertyMap ---
 
 func TestPropertyMapRoundTrip(t *testing.T) {

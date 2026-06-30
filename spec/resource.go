@@ -122,6 +122,7 @@ func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]Re
 	excludeSet := buildExcludeSet(excludeTags)
 	var resources []ResourceDef
 
+	wildcard := overrides["*"]
 	for _, g := range groups {
 		name := g.name
 		or, hasOverride := overrides[name]
@@ -138,7 +139,7 @@ func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]Re
 			continue
 		}
 
-		// Apply overrides
+		applyOverride(&res, wildcard)
 		if hasOverride {
 			applyOverride(&res, or)
 		}
@@ -328,9 +329,9 @@ func buildNameFromSegs(segs []string) string {
 	return strings.Join(parts, "")
 }
 
-// splitWords splits a path segment on hyphens and underscores.
+// splitWords splits a path segment on hyphens, underscores, and dots.
 func splitWords(s string) []string {
-	return strings.FieldsFunc(s, func(r rune) bool { return r == '-' || r == '_' })
+	return strings.FieldsFunc(s, func(r rune) bool { return r == '-' || r == '_' || r == '.' })
 }
 
 // toPascalCase converts a snake_case or kebab-case string to PascalCase.
@@ -351,7 +352,7 @@ func toPascalCase(s string) string {
 // If the string contains no separators it is assumed to already be camelCase or
 // PascalCase and only the first character is lowercased.
 func toCamelCase(s string) string {
-	if !strings.ContainsAny(s, "-_") {
+	if !strings.ContainsAny(s, "-_.") {
 		return lowercaseFirst(s)
 	}
 	words := splitWords(s)
@@ -496,7 +497,7 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 	}
 
 	// Merge in output-only properties from the read schema
-	if readSchema != nil {
+	if readSchema != nil && readSchema.Properties != nil {
 		for pair := readSchema.Properties.Oldest(); pair != nil; pair = pair.Next() {
 			apiName := pair.Key
 			camelName := toCamelCase(apiName)
@@ -512,7 +513,7 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 	idField := idPathParam
 	if idField != "" {
 		// Look for a field in the read schema that matches the path param (strip trailing "Id" etc.)
-		if readSchema != nil {
+		if readSchema != nil && readSchema.Properties != nil {
 			if _, ok := readSchema.Properties.Get("id"); ok {
 				idField = "id"
 			}
@@ -1027,6 +1028,11 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 		return
 	}
 
+	// Register a placeholder before processing properties to break reference cycles.
+	tc.types[token] = pschema.ComplexTypeSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{Type: "object", Description: defSchema.Description},
+	}
+
 	props := map[string]pschema.PropertySpec{}
 	if defSchema.Properties != nil {
 		for pair := defSchema.Properties.Oldest(); pair != nil; pair = pair.Next() {
@@ -1034,7 +1040,6 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 		}
 	}
 
-	// Register with a placeholder first to handle recursive types
 	tc.types[token] = pschema.ComplexTypeSpec{
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
 			Type:        "object",
@@ -1073,6 +1078,7 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 	groups := groupPathStrings(pathKeys)
 	excludeSet := buildExcludeSet(excludeTags)
 
+	wildcard := overrides["*"]
 	var resources []ResourceDef
 	for _, g := range groups {
 		or, hasOverride := overrides[g.name]
@@ -1088,6 +1094,7 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 		if !ok {
 			continue
 		}
+		applyOverride(&res, wildcard)
 		if hasOverride {
 			applyOverride(&res, or)
 		}
@@ -1494,6 +1501,11 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 			Enum: extractEnumValues(schema.Enum),
 		}
 		return
+	}
+
+	// Register a placeholder before processing properties to break reference cycles.
+	tc.types[token] = pschema.ComplexTypeSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{Type: "object", Description: schema.Description},
 	}
 
 	props := map[string]pschema.PropertySpec{}

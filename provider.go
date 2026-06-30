@@ -165,7 +165,7 @@ func RunProvider(ctx context.Context, name, version string, opts Options) error 
 // GetSchema parses the spec and returns the Pulumi schema JSON without starting the provider.
 // Useful in CI/CD pipelines to emit schema.json without running the full gRPC server.
 func GetSchema(name, version string, opts Options) (string, error) {
-	doc, err := spec.Load(opts.SpecURL, opts.SpecPath)
+	doc, err := spec.Load(opts.SpecURL, opts.SpecPath, opts.HTTPClient)
 	if err != nil {
 		return "", fmt.Errorf("loading spec: %w", err)
 	}
@@ -181,7 +181,7 @@ func GetSchema(name, version string, opts Options) (string, error) {
 
 // buildDynamicProvider creates the raw p.Provider that handles OpenAPI-derived resources.
 func buildDynamicProvider(name, version string, opts Options) (p.Provider, error) {
-	doc, err := spec.Load(opts.SpecURL, opts.SpecPath)
+	doc, err := spec.Load(opts.SpecURL, opts.SpecPath, opts.HTTPClient)
 	if err != nil {
 		return p.Provider{}, fmt.Errorf("loading spec: %w", err)
 	}
