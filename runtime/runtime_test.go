@@ -718,3 +718,66 @@ func TestPolling_DisabledSkipsPoll(t *testing.T) {
 		t.Errorf("expected no GET calls with polling disabled, got %d", getCalls)
 	}
 }
+
+// TestPolling_WaitUntilExists_WithContextParams verifies that context path params (e.g.
+// {orgId}) supplied as inputs are available for URL substitution during polling even when
+// the create response body omits them.
+func TestPolling_WaitUntilExists_WithContextParams(t *testing.T) {
+	// Resource nested under {orgId} — a context param the POST response won't include.
+	res := spec.ResourceDef{
+		Name:         "Item",
+		Token:        "test:index:Item",
+		CreatePath:   "/orgs/{orgId}/items",
+		CreateMethod: "POST",
+		ReadPath:     "/orgs/{orgId}/items/{itemId}",
+		DeletePath:   "/orgs/{orgId}/items/{itemId}",
+		IDPathParam:  "itemId",
+		IDField:      "itemId",
+	}
+
+	getCalls := 0
+	var capturedPaths []string
+	srv, cfg := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		capturedPaths = append(capturedPaths, r.URL.Path)
+		if r.Method == http.MethodPost {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			// Response deliberately omits orgId — mirrors real-world nested APIs.
+			_ = json.NewEncoder(w).Encode(map[string]any{"itemId": "abc-123"})
+			return
+		}
+		getCalls++
+		if getCalls < 2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"itemId": "abc-123", "name": "Widget"})
+	})
+	_ = srv
+
+	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(2 * time.Second)}
+	inputs := property.NewMap(map[string]property.Value{
+		"orgId": property.New("org-99"),
+		"name":  property.New("Widget"),
+	})
+	id, outputs, err := client.create(context.Background(), res, inputs)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if id != "abc-123" {
+		t.Errorf("id = %q, want abc-123", id)
+	}
+	if v, _ := outputs.GetOk("name"); v.AsString() != "Widget" {
+		t.Errorf("name = %q, want Widget", v.AsString())
+	}
+	// The GET paths must include the orgId substituted from inputs, not an empty segment.
+	for _, path := range capturedPaths {
+		if r := "/orgs//items"; strings.Contains(path, r) {
+			t.Errorf("path %q contains empty org segment %q — orgId was not substituted", path, r)
+		}
+	}
+	if getCalls < 2 {
+		t.Errorf("expected at least 2 GET calls, got %d", getCalls)
+	}
+}

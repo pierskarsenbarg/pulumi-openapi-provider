@@ -75,12 +75,18 @@ func (c *crudClient) create(ctx context.Context, res spec.ResourceDef, inputs pr
 	}
 
 	if c.pollingEnabled {
-		state := propertyMapToGoMap(apiBodyToPropertyMap(respBody, res.APIPropertyNames))
-		if err := c.waitUntilExists(ctx, res, id, state); err != nil {
+		// Seed polling state with inputs so context path params (e.g. {organisationId})
+		// are available for URL substitution even when the create response omits them.
+		// Response fields overwrite inputs so no response data is lost.
+		pollingState := propertyMapToAPIBody(inputs, res.APIPropertyNames)
+		for k, v := range propertyMapToGoMap(apiBodyToPropertyMap(respBody, res.APIPropertyNames)) {
+			pollingState[k] = v
+		}
+		if err := c.waitUntilExists(ctx, res, id, pollingState); err != nil {
 			return "", property.Map{}, fmt.Errorf("create %s: %w", res.Name, err)
 		}
 		// Re-read to get fully-populated state after the resource is confirmed to exist.
-		outputs, err := c.read(ctx, res, id, state)
+		outputs, err := c.read(ctx, res, id, pollingState)
 		if err != nil {
 			return "", property.Map{}, fmt.Errorf("create %s: post-create read: %w", res.Name, err)
 		}
