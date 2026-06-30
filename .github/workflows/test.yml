@@ -31,7 +31,7 @@ jobs:
       - name: List examples
         id: list
         run: |
-          examples=$(ls -d examples/*/ | xargs -I{} basename {} | jq -R . | jq -sc .)
+          examples=$(ls -d examples/*/ | xargs -I{} basename {} | grep -v '^openapi-k8s$' | jq -R . | jq -sc .)
           echo "examples=$examples" >> $GITHUB_OUTPUT
 
   code-provider-integration-tests:

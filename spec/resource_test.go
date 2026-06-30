@@ -10,7 +10,7 @@ import (
 )
 
 func TestDiscover_Petstore(t *testing.T) {
-	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "")
+	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "", nil)
 	if err != nil {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestDiscover_IdNotInSchema(t *testing.T) {
 	}
 	f.Close()
 
-	doc, err := spec.Load("", f.Name())
+	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -212,7 +212,7 @@ func loadInline(t *testing.T, content string) spec.DiscoveryResult {
 		t.Fatal(err)
 	}
 	f.Close()
-	doc, err := spec.Load("", f.Name())
+	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -558,7 +558,7 @@ func TestDiscover_Override_Skip(t *testing.T) {
 	f.WriteString(minimalSwagger)
 	f.Close()
 
-	doc, err := spec.Load("", f.Name())
+	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,7 +584,7 @@ func TestDiscover_Override_Token(t *testing.T) {
 	f.WriteString(minimalSwagger)
 	f.Close()
 
-	doc, err := spec.Load("", f.Name())
+	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,6 +599,108 @@ func TestDiscover_Override_Token(t *testing.T) {
 	}
 	if result.Resources[0].Token != "test:index:Gadget" {
 		t.Errorf("Token = %q, want test:index:Gadget", result.Resources[0].Token)
+	}
+}
+
+// twoResourceSwagger has two independent resources (Widgets, Gadgets) for wildcard override tests.
+const twoResourceSwagger = `{
+  "swagger": "2.0",
+  "info": {"title": "Test", "version": "1.0"},
+  "host": "api.example.com",
+  "basePath": "/",
+  "paths": {
+    "/widgets": {
+      "post": {"parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Widget"}}],
+               "responses": {"201": {"schema": {"$ref": "#/definitions/Widget"}}}}
+    },
+    "/widgets/{widgetId}": {
+      "get":    {"parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+                 "responses": {"200": {"schema": {"$ref": "#/definitions/Widget"}}}},
+      "delete": {"parameters": [{"in": "path", "name": "widgetId", "required": true, "type": "string"}],
+                 "responses": {"204": {}}}
+    },
+    "/gadgets": {
+      "post": {"parameters": [{"in": "body", "name": "body", "schema": {"$ref": "#/definitions/Gadget"}}],
+               "responses": {"201": {"schema": {"$ref": "#/definitions/Gadget"}}}}
+    },
+    "/gadgets/{gadgetId}": {
+      "get":    {"parameters": [{"in": "path", "name": "gadgetId", "required": true, "type": "string"}],
+                 "responses": {"200": {"schema": {"$ref": "#/definitions/Gadget"}}}},
+      "delete": {"parameters": [{"in": "path", "name": "gadgetId", "required": true, "type": "string"}],
+                 "responses": {"204": {}}}
+    }
+  },
+  "definitions": {
+    "Widget": {"type": "object", "properties": {"metadata": {"type": "object", "properties": {"name": {"type": "string"}}}}},
+    "Gadget": {"type": "object", "properties": {"metadata": {"type": "object", "properties": {"name": {"type": "string"}}}}}
+  }
+}`
+
+
+func TestDiscover_WildcardOverride_AppliesToAll(t *testing.T) {
+	f, err := os.CreateTemp("", "spec-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(twoResourceSwagger); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	doc, err := spec.Load("", f.Name(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
+		"*": {IDField: "metadata.name"},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Resources) != 2 {
+		t.Fatalf("expected 2 resources, got %d", len(result.Resources))
+	}
+	for _, r := range result.Resources {
+		if r.IDField != "metadata.name" {
+			t.Errorf("resource %q: IDField = %q, want metadata.name", r.Name, r.IDField)
+		}
+	}
+}
+
+func TestDiscover_WildcardOverride_SpecificWins(t *testing.T) {
+	f, err := os.CreateTemp("", "spec-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.WriteString(twoResourceSwagger); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	doc, err := spec.Load("", f.Name(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
+		"*":       {IDField: "metadata.name"},
+		"Gadgets": {IDField: "metadata.uid"},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range result.Resources {
+		switch r.Name {
+		case "Widgets":
+			if r.IDField != "metadata.name" {
+				t.Errorf("Widgets: IDField = %q, want metadata.name", r.IDField)
+			}
+		case "Gadgets":
+			if r.IDField != "metadata.uid" {
+				t.Errorf("Gadgets: IDField = %q, want metadata.uid", r.IDField)
+			}
+		}
 	}
 }
 
@@ -727,7 +829,7 @@ func loadInlineWithTags(t *testing.T, content string, excludeTags []string) spec
 		t.Fatal(err)
 	}
 	f.Close()
-	doc, err := spec.Load("", f.Name())
+	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -803,7 +905,7 @@ func TestDiscover_ExcludeTags_OAS3_NoMatch(t *testing.T) {
 }
 
 func TestBuildSchema_Petstore(t *testing.T) {
-	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "")
+	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "", nil)
 	if err != nil {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
@@ -1706,7 +1808,7 @@ func TestDiscover_TrailingSlashNestedPaths(t *testing.T) {
 }
 
 func TestDiscover_NetBox(t *testing.T) {
-	doc, err := spec.Load("http://localhost:8000/api/schema/", "")
+	doc, err := spec.Load("http://localhost:8000/api/schema/", "", nil)
 	if err != nil {
 		t.Skipf("skipping: cannot fetch NetBox spec: %v", err)
 	}
