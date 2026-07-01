@@ -10,7 +10,7 @@ import (
 )
 
 func TestDiscover_Petstore(t *testing.T) {
-	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "", nil)
+	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "", nil, "")
 	if err != nil {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestDiscover_IdNotInSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	doc, err := spec.Load("", f.Name(), nil)
+	doc, err := spec.Load("", f.Name(), nil, "")
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -214,7 +214,7 @@ func loadInline(t *testing.T, content string) spec.DiscoveryResult {
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	doc, err := spec.Load("", f.Name(), nil)
+	doc, err := spec.Load("", f.Name(), nil, "")
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -563,7 +563,7 @@ func TestDiscover_Override_Skip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	doc, err := spec.Load("", f.Name(), nil)
+	doc, err := spec.Load("", f.Name(), nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -592,7 +592,7 @@ func TestDiscover_Override_Token(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	doc, err := spec.Load("", f.Name(), nil)
+	doc, err := spec.Load("", f.Name(), nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,7 +656,7 @@ func TestDiscover_WildcardOverride_AppliesToAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	doc, err := spec.Load("", f.Name(), nil)
+	doc, err := spec.Load("", f.Name(), nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -688,7 +688,7 @@ func TestDiscover_WildcardOverride_SpecificWins(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	doc, err := spec.Load("", f.Name(), nil)
+	doc, err := spec.Load("", f.Name(), nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -839,7 +839,7 @@ func loadInlineWithTags(t *testing.T, content string, excludeTags []string) spec
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	doc, err := spec.Load("", f.Name(), nil)
+	doc, err := spec.Load("", f.Name(), nil, "")
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -915,7 +915,7 @@ func TestDiscover_ExcludeTags_OAS3_NoMatch(t *testing.T) {
 }
 
 func TestBuildSchema_Petstore(t *testing.T) {
-	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "", nil)
+	doc, err := spec.Load("https://petstore.swagger.io/v2/swagger.json", "", nil, "")
 	if err != nil {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
@@ -1818,7 +1818,7 @@ func TestDiscover_TrailingSlashNestedPaths(t *testing.T) {
 }
 
 func TestDiscover_NetBox(t *testing.T) {
-	doc, err := spec.Load("http://localhost:8000/api/schema/", "", nil)
+	doc, err := spec.Load("http://localhost:8000/api/schema/", "", nil, "")
 	if err != nil {
 		t.Skipf("skipping: cannot fetch NetBox spec: %v", err)
 	}

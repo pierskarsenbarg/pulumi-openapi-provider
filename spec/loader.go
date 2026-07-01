@@ -11,10 +11,11 @@ import (
 )
 
 // Load parses an OpenAPI/Swagger spec from either a URL or local file path.
-// client is used for URL fetches; pass nil to use http.DefaultClient.
-func Load(specURL, specPath string, client *http.Client) (libopenapi.Document, error) {
+// client is used for URL fetches; pass nil to use http.DefaultClient. userAgent,
+// if non-empty, is sent as the "User-Agent" header on URL fetches.
+func Load(specURL, specPath string, client *http.Client, userAgent string) (libopenapi.Document, error) {
 	if specURL != "" {
-		return loadFromURL(specURL, client)
+		return loadFromURL(specURL, client, userAgent)
 	}
 	if specPath != "" {
 		return loadFromFile(specPath)
@@ -25,11 +26,12 @@ func Load(specURL, specPath string, client *http.Client) (libopenapi.Document, e
 // LoadSpec parses an OpenAPI spec from a URL or file path, detecting the source
 // by prefix: http:// and https:// are fetched over HTTP, file:// URIs have the
 // prefix stripped and read from disk, and anything else is treated as a local
-// file path (absolute or relative).
-func LoadSpec(src string) (libopenapi.Document, error) {
+// file path (absolute or relative). userAgent, if non-empty, is sent as the
+// "User-Agent" header on URL fetches.
+func LoadSpec(src string, userAgent string) (libopenapi.Document, error) {
 	switch {
 	case strings.HasPrefix(src, "http://"), strings.HasPrefix(src, "https://"):
-		return loadFromURL(src, nil)
+		return loadFromURL(src, nil, userAgent)
 	case strings.HasPrefix(src, "file://"):
 		return loadFromFile(strings.TrimPrefix(src, "file://"))
 	default:
@@ -37,11 +39,18 @@ func LoadSpec(src string) (libopenapi.Document, error) {
 	}
 }
 
-func loadFromURL(url string, client *http.Client) (libopenapi.Document, error) {
+func loadFromURL(url string, client *http.Client, userAgent string) (libopenapi.Document, error) {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	resp, err := client.Get(url) //nolint:gosec
+	req, err := http.NewRequest(http.MethodGet, url, nil) //nolint:gosec,noctx
+	if err != nil {
+		return nil, fmt.Errorf("building request for %s: %w", url, err)
+	}
+	if userAgent != "" {
+		req.Header.Set("User-Agent", userAgent)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetching spec from %s: %w", url, err)
 	}

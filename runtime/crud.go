@@ -217,6 +217,9 @@ func (c *crudClient) request(ctx context.Context, method, path string, body map[
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	if ua := c.cfg.UserAgent(); ua != "" {
+		req.Header.Set("User-Agent", ua)
+	}
 	for k, v := range c.cfg.AuthHeaders() {
 		req.Header.Set(k, v)
 	}
@@ -236,6 +239,9 @@ func (c *crudClient) requestNoBody(ctx context.Context, method, path string) (ma
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
+	if ua := c.cfg.UserAgent(); ua != "" {
+		req.Header.Set("User-Agent", ua)
+	}
 	for k, v := range c.cfg.AuthHeaders() {
 		req.Header.Set(k, v)
 	}

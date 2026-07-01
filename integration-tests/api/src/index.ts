@@ -9,6 +9,15 @@ import { invitesRouter } from "./routes/invites";
 
 const app = new Hono();
 
+let lastUserAgent = "";
+app.use("*", async (c, next) => {
+  if (c.req.path !== "/debug/last-user-agent") {
+    lastUserAgent = c.req.header("user-agent") ?? "";
+  }
+  await next();
+});
+app.get("/debug/last-user-agent", (c) => c.json({ userAgent: lastUserAgent }));
+
 app.route("/users", usersRouter);
 app.route("/organisations", organisationsRouter);
 app.route("/organisations/:organisationId/teams", teamsRouter);

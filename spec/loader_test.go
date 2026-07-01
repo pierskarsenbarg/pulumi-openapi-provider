@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
@@ -18,7 +19,7 @@ func TestLoad_RejectsNonOpenAPIDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := spec.Load("", path, nil)
+	_, err := spec.Load("", path, nil, "")
 	if err == nil {
 		t.Fatal("expected error for non-OpenAPI document, got nil")
 	}
@@ -37,7 +38,7 @@ paths: {}
 		t.Fatal(err)
 	}
 
-	_, err := spec.Load("", path, nil)
+	_, err := spec.Load("", path, nil, "")
 	if err != nil {
 		t.Fatalf("expected no error for valid Swagger 2.0 spec, got: %v", err)
 	}
@@ -56,7 +57,7 @@ paths: {}
 		t.Fatal(err)
 	}
 
-	_, err := spec.Load("", path, nil)
+	_, err := spec.Load("", path, nil, "")
 	if err != nil {
 		t.Fatalf("expected no error for valid OAS3 spec, got: %v", err)
 	}
@@ -76,7 +77,7 @@ func TestLoad_URL_UsesNilClientSuccessfully(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := spec.Load(srv.URL, "", nil)
+	_, err := spec.Load(srv.URL, "", nil, "")
 	if err != nil {
 		t.Fatalf("expected no error with nil client, got: %v", err)
 	}
@@ -99,7 +100,7 @@ func TestLoad_URL_UsesProvidedClient(t *testing.T) {
 		}),
 	}
 
-	_, err := spec.Load(srv.URL, "", client)
+	_, err := spec.Load(srv.URL, "", client, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,9 +119,45 @@ func TestLoad_URL_PropagatesClientError(t *testing.T) {
 		}),
 	}
 
-	_, err := spec.Load("http://127.0.0.1:1/openapi.yaml", "", client)
+	_, err := spec.Load("http://127.0.0.1:1/openapi.yaml", "", client, "")
 	if err == nil {
 		t.Fatal("expected error from failing client, got nil")
+	}
+}
+
+func TestLoad_URL_SetsUserAgent(t *testing.T) {
+	var gotUserAgent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUserAgent = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write(simpleSwaggerSpec)
+	}))
+	defer srv.Close()
+
+	_, err := spec.Load(srv.URL, "", nil, "my-provider/1.0")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotUserAgent != "my-provider/1.0" {
+		t.Errorf("User-Agent = %q, want my-provider/1.0", gotUserAgent)
+	}
+}
+
+func TestLoad_URL_NoUserAgentWhenEmpty(t *testing.T) {
+	var gotUserAgent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUserAgent = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write(simpleSwaggerSpec)
+	}))
+	defer srv.Close()
+
+	_, err := spec.Load(srv.URL, "", nil, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotUserAgent != "" && !strings.HasPrefix(gotUserAgent, "Go-http-client/") {
+		t.Errorf("User-Agent = %q, want empty or Go's default client UA", gotUserAgent)
 	}
 }
 

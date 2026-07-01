@@ -18,6 +18,10 @@ type Options struct {
 	BaseURL string
 	// HTTPClient is an optional custom HTTP client for API calls.
 	HTTPClient *http.Client
+	// UserAgent overrides the default "User-Agent" header sent with every HTTP
+	// request (both the spec fetch and API calls). If empty, defaults to
+	// "pulumi-openapi-provider/{version}".
+	UserAgent string
 	// Overrides customizes how discovered resources map to Pulumi operations.
 	// Keys are the discovered resource names (e.g. "Pet", "StoreOrder").
 	// The special key "*" applies to every resource as a baseline; resource-specific
