@@ -1,3 +1,4 @@
+// Package config provides runtime configuration for OpenAPI-backed Pulumi providers.
 package config
 
 import (
@@ -7,6 +8,11 @@ import (
 	"sync"
 
 	p "github.com/pulumi/pulumi-go-provider"
+)
+
+const (
+	kindAPIKey = "apiKey"
+	kindBearer = "bearer"
 )
 
 // AuthScheme describes a single security scheme and how to apply it at runtime.
@@ -63,7 +69,7 @@ func (c *ProviderConfig) Apply(req p.ConfigureRequest) {
 	} else {
 		for _, s := range c.authSchemes {
 			switch s.Kind {
-			case "apiKey", "bearer":
+			case kindAPIKey, kindBearer:
 				if s.ConfigVar != "" {
 					if v, ok := req.Args.GetOk(s.ConfigVar); ok && v.IsString() {
 						c.schemeValues[s.ConfigVar] = v.AsString()
@@ -94,7 +100,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 
 	if len(c.authSchemes) == 0 {
 		// fallback: apply legacy generic vars
-		if key := c.schemeValues["apiKey"]; key != "" {
+		if key := c.schemeValues[kindAPIKey]; key != "" {
 			h := c.schemeValues["apiKeyHeader"]
 			if h == "" {
 				h = "api_key"
@@ -109,7 +115,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 
 	for _, s := range c.authSchemes {
 		switch s.Kind {
-		case "apiKey":
+		case kindAPIKey:
 			val := c.schemeValues[s.ConfigVar]
 			if val == "" {
 				continue
@@ -118,7 +124,7 @@ func (c *ProviderConfig) AuthHeaders() map[string]string {
 				headers[s.HeaderName] = val
 			}
 			// query param support requires changes in crud.go; skipped for now
-		case "bearer":
+		case kindBearer:
 			val := c.schemeValues[s.ConfigVar]
 			if val != "" {
 				headers[c.bearerHeader()] = c.bearerValue(val)
@@ -143,7 +149,7 @@ func (c *ProviderConfig) bearerHeader() string {
 }
 
 func (c *ProviderConfig) bearerValue(token string) string {
-	prefix := "bearer"
+	prefix := kindBearer
 	if c.tokenPrefixOverride != nil {
 		prefix = *c.tokenPrefixOverride
 	}

@@ -3,6 +3,7 @@ package spec
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
@@ -33,9 +34,7 @@ func BuildSchema(pkgName, version string, result DiscoveryResult) (string, error
 func resourceSpec(res ResourceDef) pschema.ResourceSpec {
 	// Outputs include all input properties plus any read-only properties.
 	allOutputProps := map[string]pschema.PropertySpec{}
-	for k, v := range res.InputSchema {
-		allOutputProps[k] = v
-	}
+	maps.Copy(allOutputProps, res.InputSchema)
 	for k, v := range res.OutputSchema {
 		if _, alreadyInput := allOutputProps[k]; !alreadyInput {
 			allOutputProps[k] = v
@@ -71,23 +70,23 @@ func providerSpec(schemes []AuthScheme) pschema.ResourceSpec {
 func authConfigVars(schemes []AuthScheme) map[string]pschema.PropertySpec {
 	vars := map[string]pschema.PropertySpec{
 		"baseUrl": {
-			TypeSpec:    pschema.TypeSpec{Type: "string"},
+			TypeSpec:    pschema.TypeSpec{Type: typeString},
 			Description: "Base URL for the API (overrides the spec server URL).",
 		},
 	}
 
 	if len(schemes) == 0 {
 		vars["apiKey"] = pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "string"},
+			TypeSpec:    pschema.TypeSpec{Type: typeString},
 			Description: "API key value.",
 			Secret:      true,
 		}
 		vars["apiKeyHeader"] = pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "string"},
+			TypeSpec:    pschema.TypeSpec{Type: typeString},
 			Description: "HTTP header name for the API key (default: api_key).",
 		}
 		vars["bearerToken"] = pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "string"},
+			TypeSpec:    pschema.TypeSpec{Type: typeString},
 			Description: "Bearer token for the Authorization header.",
 			Secret:      true,
 		}
@@ -97,33 +96,33 @@ func authConfigVars(schemes []AuthScheme) map[string]pschema.PropertySpec {
 	seen := map[string]bool{}
 	for _, s := range schemes {
 		switch s.Kind {
-		case "apiKey", "bearer":
+		case kindAPIKey, kindBearer:
 			if s.ConfigVar != "" && !seen[s.ConfigVar] {
 				seen[s.ConfigVar] = true
 				desc := s.Description
-				if desc == "" && s.Kind == "bearer" {
+				if desc == "" && s.Kind == kindBearer {
 					desc = "Bearer token for the Authorization header."
 				} else if desc == "" {
 					desc = "API key credential."
 				}
 				vars[s.ConfigVar] = pschema.PropertySpec{
-					TypeSpec:    pschema.TypeSpec{Type: "string"},
+					TypeSpec:    pschema.TypeSpec{Type: typeString},
 					Description: desc,
 					Secret:      true,
 				}
 			}
-		case "basic":
+		case kindBasic:
 			if !seen["username"] {
 				seen["username"] = true
 				vars["username"] = pschema.PropertySpec{
-					TypeSpec:    pschema.TypeSpec{Type: "string"},
+					TypeSpec:    pschema.TypeSpec{Type: typeString},
 					Description: "Username for HTTP Basic authentication.",
 				}
 			}
 			if !seen["password"] {
 				seen["password"] = true
 				vars["password"] = pschema.PropertySpec{
-					TypeSpec:    pschema.TypeSpec{Type: "string"},
+					TypeSpec:    pschema.TypeSpec{Type: typeString},
 					Description: "Password for HTTP Basic authentication.",
 					Secret:      true,
 				}

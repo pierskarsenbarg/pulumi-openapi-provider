@@ -14,7 +14,7 @@ import (
 func TestLoad_RejectsNonOpenAPIDocument(t *testing.T) {
 	tmp := t.TempDir()
 	path := tmp + "/not-openapi.yaml"
-	if err := os.WriteFile(path, []byte("foo: bar\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("foo: bar\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -33,7 +33,7 @@ paths: {}
 `)
 	tmp := t.TempDir()
 	path := tmp + "/swagger.yaml"
-	if err := os.WriteFile(path, swagger2, 0o644); err != nil {
+	if err := os.WriteFile(path, swagger2, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,7 +52,7 @@ paths: {}
 `)
 	tmp := t.TempDir()
 	path := tmp + "/oas3.yaml"
-	if err := os.WriteFile(path, oas3, 0o644); err != nil {
+	if err := os.WriteFile(path, oas3, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -72,7 +72,7 @@ paths: {}
 func TestLoad_URL_UsesNilClientSuccessfully(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/yaml")
-		w.Write(simpleSwaggerSpec) //nolint:errcheck
+		_, _ = w.Write(simpleSwaggerSpec)
 	}))
 	defer srv.Close()
 
@@ -87,7 +87,7 @@ func TestLoad_URL_UsesProvidedClient(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requested = true
 		w.Header().Set("Content-Type", "application/yaml")
-		w.Write(simpleSwaggerSpec) //nolint:errcheck
+		_, _ = w.Write(simpleSwaggerSpec)
 	}))
 	defer srv.Close()
 

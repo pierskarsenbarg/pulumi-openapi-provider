@@ -204,7 +204,8 @@ func buildDynamicProvider(name, version string, opts Options) (p.Provider, error
 		tokenPrefixOverride = &opts.AuthOverride.TokenPrefix
 	}
 	cfg := config.New(opts.HTTPClient, baseURL, convertAuthSchemes(result.AuthSchemes), authHeaderOverride, tokenPrefixOverride)
-	polling := runtime.ResolvePollingConfig(opts.PollingOptions.Timeout, opts.PollingOptions.InitialInterval, opts.PollingOptions.MaxInterval, opts.PollingOptions.Multiplier)
+	polling := runtime.ResolvePollingConfig(opts.PollingOptions.Timeout, opts.PollingOptions.InitialInterval,
+		opts.PollingOptions.MaxInterval, opts.PollingOptions.Multiplier)
 	hooks := buildHooks(result.Resources, opts.Overrides)
 	return runtime.Build(name, version, result, cfg, !opts.DisablePolling, polling, hooks), nil
 }

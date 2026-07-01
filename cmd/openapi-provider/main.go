@@ -1,3 +1,4 @@
+// Package main is the entry point for the parameterized openapi-provider binary.
 package main
 
 import (

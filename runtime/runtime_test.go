@@ -250,7 +250,7 @@ func TestNotFoundError_Error(t *testing.T) {
 func TestComputeDiff_NoChanges(t *testing.T) {
 	state := property.NewMap(map[string]property.Value{"name": property.New("Fido")})
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Fido")})
-	resp, err := computeDiff(context.Background(), p.DiffRequest{State: state, Inputs: inputs})
+	resp, err := computeDiff(t.Context(), p.DiffRequest{State: state, Inputs: inputs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestComputeDiff_NoChanges(t *testing.T) {
 func TestComputeDiff_Update(t *testing.T) {
 	state := property.NewMap(map[string]property.Value{"name": property.New("Fido")})
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Rex")})
-	resp, _ := computeDiff(context.Background(), p.DiffRequest{State: state, Inputs: inputs})
+	resp, _ := computeDiff(t.Context(), p.DiffRequest{State: state, Inputs: inputs})
 	if !resp.HasChanges {
 		t.Error("expected changes")
 	}
@@ -274,7 +274,7 @@ func TestComputeDiff_Update(t *testing.T) {
 func TestComputeDiff_Delete(t *testing.T) {
 	state := property.NewMap(map[string]property.Value{"name": property.New("Fido"), "old": property.New("gone")})
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Fido")})
-	resp, _ := computeDiff(context.Background(), p.DiffRequest{State: state, Inputs: inputs})
+	resp, _ := computeDiff(t.Context(), p.DiffRequest{State: state, Inputs: inputs})
 	if !resp.HasChanges {
 		t.Error("expected changes")
 	}
@@ -286,7 +286,7 @@ func TestComputeDiff_Delete(t *testing.T) {
 func TestComputeDiff_Add(t *testing.T) {
 	state := property.NewMap(map[string]property.Value{})
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Fido")})
-	resp, _ := computeDiff(context.Background(), p.DiffRequest{State: state, Inputs: inputs})
+	resp, _ := computeDiff(t.Context(), p.DiffRequest{State: state, Inputs: inputs})
 	if !resp.HasChanges {
 		t.Error("expected changes")
 	}
@@ -344,7 +344,7 @@ func TestCRUD_Create(t *testing.T) {
 
 	client := &crudClient{cfg: cfg}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
-	id, outputs, err := client.create(context.Background(), testResource(), inputs)
+	id, outputs, err := client.create(t.Context(), testResource(), inputs)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -365,7 +365,7 @@ func TestCRUD_Create_MissingID(t *testing.T) {
 
 	client := &crudClient{cfg: cfg}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
-	_, _, err := client.create(context.Background(), testResource(), inputs)
+	_, _, err := client.create(t.Context(), testResource(), inputs)
 	if err == nil {
 		t.Fatal("expected error when ID is missing from response")
 	}
@@ -381,7 +381,7 @@ func TestCRUD_Read(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg}
-	outputs, err := client.read(context.Background(), testResource(), "42", nil)
+	outputs, err := client.read(t.Context(), testResource(), "42", nil)
 	if err != nil {
 		t.Fatalf("read: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestCRUD_Read_NotFound(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg}
-	outputs, err := client.read(context.Background(), testResource(), "99", nil)
+	outputs, err := client.read(t.Context(), testResource(), "99", nil)
 	if err != nil {
 		t.Fatalf("expected nil error on 404, got %v", err)
 	}
@@ -420,7 +420,7 @@ func TestCRUD_Update(t *testing.T) {
 
 	client := &crudClient{cfg: cfg}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Bar")})
-	outputs, err := client.update(context.Background(), res, "42", inputs)
+	outputs, err := client.update(t.Context(), res, "42", inputs)
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
@@ -437,7 +437,7 @@ func TestCRUD_Update_NoUpdatePath(t *testing.T) {
 
 	client := &crudClient{cfg: cfg}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
-	outputs, err := client.update(context.Background(), res, "42", inputs)
+	outputs, err := client.update(t.Context(), res, "42", inputs)
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestCRUD_Delete(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg}
-	if err := client.del(context.Background(), testResource(), "42", nil); err != nil {
+	if err := client.del(t.Context(), testResource(), "42", nil); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 }
@@ -466,7 +466,7 @@ func TestCRUD_Delete_NotFound_IsOK(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg}
-	if err := client.del(context.Background(), testResource(), "99", nil); err != nil {
+	if err := client.del(t.Context(), testResource(), "99", nil); err != nil {
 		t.Fatalf("expected 404 on delete to be ignored, got: %v", err)
 	}
 }
@@ -475,7 +475,7 @@ func TestCRUD_Create_EmptyBaseURL(t *testing.T) {
 	cfg := config.New(nil, "", nil, "", nil)
 	client := &crudClient{cfg: cfg}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
-	_, _, err := client.create(context.Background(), testResource(), inputs)
+	_, _, err := client.create(t.Context(), testResource(), inputs)
 	if err == nil {
 		t.Fatal("expected error when baseUrl is empty")
 	}
@@ -487,7 +487,7 @@ func TestCRUD_Create_EmptyBaseURL(t *testing.T) {
 func TestCRUD_Read_EmptyBaseURL(t *testing.T) {
 	cfg := config.New(nil, "", nil, "", nil)
 	client := &crudClient{cfg: cfg}
-	_, err := client.read(context.Background(), testResource(), "42", nil)
+	_, err := client.read(t.Context(), testResource(), "42", nil)
 	if err == nil {
 		t.Fatal("expected error when baseUrl is empty")
 	}
@@ -503,7 +503,7 @@ func TestDo_NonSuccessStatus(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg}
-	_, err := client.read(context.Background(), testResource(), "1", nil)
+	_, err := client.read(t.Context(), testResource(), "1", nil)
 	if err == nil {
 		t.Fatal("expected error for 500 response")
 	}
@@ -515,7 +515,7 @@ func TestDo_EmptyBody(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg}
-	if err := client.del(context.Background(), testResource(), "1", nil); err != nil {
+	if err := client.del(t.Context(), testResource(), "1", nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -525,7 +525,7 @@ func TestDo_EmptyBody(t *testing.T) {
 func TestHandleCheck_NoRequiredInputs(t *testing.T) {
 	res := testResource() // RequiredInputs is nil
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Fido")})
-	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	resp, err := handleCheck(t.Context(), res, p.CheckRequest{Inputs: inputs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -541,7 +541,7 @@ func TestHandleCheck_AllRequiredPresent(t *testing.T) {
 		"name":   property.New("Fido"),
 		"status": property.New("available"),
 	})
-	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	resp, err := handleCheck(t.Context(), res, p.CheckRequest{Inputs: inputs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -557,7 +557,7 @@ func TestHandleCheck_MissingRequired(t *testing.T) {
 		"name": property.New("Fido"),
 		// "status" is missing
 	})
-	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	resp, err := handleCheck(t.Context(), res, p.CheckRequest{Inputs: inputs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -572,7 +572,7 @@ func TestHandleCheck_MissingRequired(t *testing.T) {
 func TestHandleCheck_AllRequiredMissing(t *testing.T) {
 	res := testResource()
 	res.RequiredInputs = []string{"name", "status"}
-	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: property.NewMap(nil)})
+	resp, err := handleCheck(t.Context(), res, p.CheckRequest{Inputs: property.NewMap(nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +588,7 @@ func TestHandleCheck_InputsPassedThrough(t *testing.T) {
 		"name":  property.New("Fido"),
 		"extra": property.New("bonus"),
 	})
-	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	resp, err := handleCheck(t.Context(), res, p.CheckRequest{Inputs: inputs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,7 +601,7 @@ func TestHandleCheck_ContextParamRequired(t *testing.T) {
 	res := testResource()
 	res.RequiredInputs = []string{"orgName"}
 	inputs := property.NewMap(map[string]property.Value{}) // orgName missing
-	resp, err := handleCheck(context.Background(), res, p.CheckRequest{Inputs: inputs})
+	resp, err := handleCheck(t.Context(), res, p.CheckRequest{Inputs: inputs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,7 +618,7 @@ func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
 	args := property.NewMap(map[string]property.Value{
 		"baseUrl": property.New("https://api.example.com"),
 	})
-	err := provider.Configure(context.Background(), p.ConfigureRequest{Args: args})
+	err := provider.Configure(t.Context(), p.ConfigureRequest{Args: args})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -627,7 +627,7 @@ func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
 func TestConfigure_OKWhenBaseURLFromDefault(t *testing.T) {
 	cfg := config.New(nil, "https://api.example.com", nil, "", nil)
 	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg, false, PollingConfig{}, nil)
-	err := provider.Configure(context.Background(), p.ConfigureRequest{})
+	err := provider.Configure(t.Context(), p.ConfigureRequest{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -654,7 +654,7 @@ func TestPolling_WaitUntilExists_SucceedsOnSecondPoll(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(2 * time.Second)}
-	err := client.waitUntilExists(context.Background(), res, "42", map[string]any{})
+	err := client.waitUntilExists(t.Context(), res, "42", map[string]any{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -670,7 +670,7 @@ func TestPolling_WaitUntilExists_TimesOut(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(100 * time.Millisecond)}
-	err := client.waitUntilExists(context.Background(), res, "42", map[string]any{})
+	err := client.waitUntilExists(t.Context(), res, "42", map[string]any{})
 	if err == nil {
 		t.Fatal("expected timeout error, got nil")
 	}
@@ -690,7 +690,7 @@ func TestPolling_WaitUntilGone_SucceedsOnSecondPoll(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(2 * time.Second)}
-	err := client.waitUntilGone(context.Background(), res, "42", map[string]any{})
+	err := client.waitUntilGone(t.Context(), res, "42", map[string]any{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -707,7 +707,7 @@ func TestPolling_WaitUntilGone_TimesOut(t *testing.T) {
 	})
 
 	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(100 * time.Millisecond)}
-	err := client.waitUntilGone(context.Background(), res, "42", map[string]any{})
+	err := client.waitUntilGone(t.Context(), res, "42", map[string]any{})
 	if err == nil {
 		t.Fatal("expected timeout error, got nil")
 	}
@@ -719,7 +719,7 @@ func TestPolling_ContextCancellation(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	client := &crudClient{cfg: cfg, pollingEnabled: true, polling: fastPolling(10 * time.Second)}
 
 	done := make(chan error, 1)
@@ -750,7 +750,7 @@ func TestPolling_DisabledSkipsPoll(t *testing.T) {
 
 	client := &crudClient{cfg: cfg, pollingEnabled: false, polling: fastPolling(2 * time.Second)}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
-	_, _, err := client.create(context.Background(), res, inputs)
+	_, _, err := client.create(t.Context(), res, inputs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -801,7 +801,7 @@ func TestPolling_WaitUntilExists_WithContextParams(t *testing.T) {
 		"orgId": property.New("org-99"),
 		"name":  property.New("Widget"),
 	})
-	id, outputs, err := client.create(context.Background(), res, inputs)
+	id, outputs, err := client.create(t.Context(), res, inputs)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}

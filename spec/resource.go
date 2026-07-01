@@ -1,3 +1,4 @@
+// Package spec discovers Pulumi resources from OpenAPI/Swagger documents.
 package spec
 
 import (
@@ -12,6 +13,28 @@ import (
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"go.yaml.in/yaml/v4"
+)
+
+const (
+	specFormatOAS2 = "oas2"
+
+	kindAPIKey = "apiKey"
+	kindBearer = "bearer"
+	kindBasic  = "basic"
+
+	configVarBearerToken = "bearerToken"
+	headerAuthorization  = "Authorization"
+
+	schemeHTTPS    = "https"
+	schemeHTTP     = "http"
+	locationHeader = "header"
+
+	typeString  = "string"
+	typeInteger = "integer"
+	typeNumber  = "number"
+	typeBoolean = "boolean"
+	typeArray   = "array"
+	typeObject  = "object"
 )
 
 // AuthScheme describes a single security scheme discovered from an OpenAPI spec.
@@ -56,7 +79,7 @@ type DiscoveryResult struct {
 // provides no meaningful server address.
 func BaseURL(doc libopenapi.Document) string {
 	info := doc.GetSpecInfo()
-	if info.SpecFormat == "oas2" {
+	if info.SpecFormat == specFormatOAS2 {
 		model, err := doc.BuildV2Model()
 		if err != nil || model == nil {
 			return ""
@@ -75,7 +98,7 @@ func BaseURL(doc libopenapi.Document) string {
 // excludeTags lists operation tags whose resources should be excluded from discovery.
 func Discover(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride, excludeTags []string) (DiscoveryResult, error) {
 	info := doc.GetSpecInfo()
-	if info.SpecFormat == "oas2" {
+	if info.SpecFormat == specFormatOAS2 {
 		return discoverV2(doc, pkgName, overrides, excludeTags)
 	}
 	return discoverV3(doc, pkgName, overrides, excludeTags)
@@ -164,33 +187,33 @@ func extractAuthSchemesV2(swagger *v2high.Swagger) []AuthScheme {
 		key := pair.Key
 		s := pair.Value
 		switch s.Type {
-		case "apiKey":
+		case kindAPIKey:
 			scheme := AuthScheme{
 				ConfigVar:   lowercaseFirst(key),
 				Description: s.Description,
 				Secret:      true,
 			}
-			if s.In == "header" && s.Name == "Authorization" {
-				scheme.Kind = "bearer"
-				scheme.HeaderName = "Authorization"
-			} else if s.In == "header" {
-				scheme.Kind = "apiKey"
+			if s.In == locationHeader && s.Name == headerAuthorization {
+				scheme.Kind = kindBearer
+				scheme.HeaderName = headerAuthorization
+			} else if s.In == locationHeader {
+				scheme.Kind = kindAPIKey
 				scheme.HeaderName = s.Name
 			} else {
-				scheme.Kind = "apiKey"
+				scheme.Kind = kindAPIKey
 				scheme.QueryParam = s.Name
 			}
 			schemes = append(schemes, scheme)
-		case "basic":
+		case kindBasic:
 			schemes = append(schemes, AuthScheme{
-				Kind:        "basic",
+				Kind:        kindBasic,
 				Description: s.Description,
 			})
 		case "oauth2":
 			schemes = append(schemes, AuthScheme{
-				Kind:        "bearer",
-				ConfigVar:   "bearerToken",
-				HeaderName:  "Authorization",
+				Kind:        kindBearer,
+				ConfigVar:   configVarBearerToken,
+				HeaderName:  headerAuthorization,
 				Description: s.Description,
 				Secret:      true,
 			})
@@ -204,15 +227,15 @@ func extractBaseURLV2(swagger *v2high.Swagger) string {
 	if host == "" {
 		return ""
 	}
-	scheme := "https"
+	scheme := schemeHTTPS
 	for _, s := range swagger.Schemes {
 		lower := strings.ToLower(s)
-		if lower == "https" {
-			scheme = "https"
+		if lower == schemeHTTPS {
+			scheme = schemeHTTPS
 			break
 		}
-		if lower == "http" {
-			scheme = "http"
+		if lower == schemeHTTP {
+			scheme = schemeHTTP
 		}
 	}
 	base := swagger.BasePath
@@ -304,7 +327,7 @@ func groupPathStrings(paths []string) []pathGroup {
 // splitSegs splits a URL path into non-empty segments.
 func splitSegs(path string) []string {
 	var segs []string
-	for _, s := range strings.Split(strings.Trim(path, "/"), "/") {
+	for s := range strings.SplitSeq(strings.Trim(path, "/"), "/") {
 		if s != "" {
 			segs = append(segs, s)
 		}
@@ -540,8 +563,8 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 	// Users must supply these to construct the API URL.
 	for _, ctxParam := range contextPathParams(g.itemPath, idPathParam) {
 		if _, exists := inputs[ctxParam]; !exists {
-			inputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
-			outputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
+			inputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
+			outputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
 			requiredInputs = append(requiredInputs, ctxParam)
 		}
 	}
@@ -612,14 +635,14 @@ func extractDefName(ref string) string {
 // pulumiTypeForOAPIType maps an OpenAPI primitive type name to its Pulumi schema equivalent.
 func pulumiTypeForOAPIType(t string) string {
 	switch t {
-	case "integer":
-		return "integer"
-	case "number":
-		return "number"
-	case "boolean":
-		return "boolean"
+	case typeInteger:
+		return typeInteger
+	case typeNumber:
+		return typeNumber
+	case typeBoolean:
+		return typeBoolean
 	default:
-		return "string"
+		return typeString
 	}
 }
 
@@ -877,7 +900,7 @@ type typeCollector struct {
 // typeHint is a PascalCase name used to register an inline enum type if the schema declares enum values.
 func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2high.Definitions, typeHint string) pschema.PropertySpec {
 	if proxy == nil {
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
 	}
 	ref := proxy.GetReference()
 	if ref != "" {
@@ -897,7 +920,7 @@ func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2hi
 
 func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Definitions, typeHint string) pschema.PropertySpec {
 	if schema == nil {
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
 	}
 
 	t := ""
@@ -924,38 +947,38 @@ func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Def
 	}
 
 	switch t {
-	case "integer":
+	case typeInteger:
 		return pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "integer"},
+			TypeSpec:    pschema.TypeSpec{Type: typeInteger},
 			Description: schema.Description,
 		}
-	case "number":
+	case typeNumber:
 		return pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "number"},
+			TypeSpec:    pschema.TypeSpec{Type: typeNumber},
 			Description: schema.Description,
 		}
-	case "boolean":
+	case typeBoolean:
 		return pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "boolean"},
+			TypeSpec:    pschema.TypeSpec{Type: typeBoolean},
 			Description: schema.Description,
 		}
-	case "array":
+	case typeArray:
 		itemSpec := tc.arrayItemSpec(schema, defs)
 		return pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
-				Type:  "array",
+				Type:  typeArray,
 				Items: &itemSpec,
 			},
 			Description: schema.Description,
 		}
-	case "object":
+	case typeObject:
 		return pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "object"},
+			TypeSpec:    pschema.TypeSpec{Type: typeObject},
 			Description: schema.Description,
 		}
 	default:
 		return pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Type: "string"},
+			TypeSpec:    pschema.TypeSpec{Type: typeString},
 			Description: schema.Description,
 		}
 	}
@@ -963,11 +986,11 @@ func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Def
 
 func (tc *typeCollector) arrayItemSpec(schema *highbase.Schema, defs *v2high.Definitions) pschema.TypeSpec {
 	if schema.Items == nil {
-		return pschema.TypeSpec{Type: "string"}
+		return pschema.TypeSpec{Type: typeString}
 	}
 	itemProxy := schema.Items.A
 	if itemProxy == nil {
-		return pschema.TypeSpec{Type: "string"}
+		return pschema.TypeSpec{Type: typeString}
 	}
 	ref := itemProxy.GetReference()
 	if ref != "" {
@@ -981,15 +1004,15 @@ func (tc *typeCollector) arrayItemSpec(schema *highbase.Schema, defs *v2high.Def
 	}
 	itemSchema := itemProxy.Schema()
 	if itemSchema == nil {
-		return pschema.TypeSpec{Type: "string"}
+		return pschema.TypeSpec{Type: typeString}
 	}
 	if len(itemSchema.Type) == 0 {
-		return pschema.TypeSpec{Type: "string"}
+		return pschema.TypeSpec{Type: typeString}
 	}
 	// Nested arrays (array-of-arrays) are not representable without inner items;
 	// fall back to string to keep the schema valid.
-	if itemSchema.Type[0] == "array" {
-		return pschema.TypeSpec{Type: "string"}
+	if itemSchema.Type[0] == typeArray {
+		return pschema.TypeSpec{Type: typeString}
 	}
 	return pschema.TypeSpec{Type: itemSchema.Type[0]}
 }
@@ -1014,7 +1037,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 
 	// Named enum type: scalar schema with enum values.
 	if len(defSchema.Enum) > 0 {
-		t := "string"
+		t := typeString
 		if len(defSchema.Type) > 0 {
 			t = defSchema.Type[0]
 		}
@@ -1030,7 +1053,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 
 	// Register a placeholder before processing properties to break reference cycles.
 	tc.types[token] = pschema.ComplexTypeSpec{
-		ObjectTypeSpec: pschema.ObjectTypeSpec{Type: "object", Description: defSchema.Description},
+		ObjectTypeSpec: pschema.ObjectTypeSpec{Type: typeObject, Description: defSchema.Description},
 	}
 
 	props := map[string]pschema.PropertySpec{}
@@ -1042,7 +1065,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 
 	tc.types[token] = pschema.ComplexTypeSpec{
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
-			Type:        "object",
+			Type:        typeObject,
 			Description: defSchema.Description,
 			Properties:  props,
 			Required:    toCamelCaseSlice(defSchema.Required),
@@ -1071,7 +1094,7 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 
 	var pathKeys []string
 	if d.Paths != nil && d.Paths.PathItems != nil {
-		for k, _ := range d.Paths.PathItems.FromOldest() {
+		for k := range d.Paths.PathItems.FromOldest() {
 			pathKeys = append(pathKeys, k)
 		}
 	}
@@ -1116,46 +1139,46 @@ func extractAuthSchemesV3(d *v3high.Document) []AuthScheme {
 	var schemes []AuthScheme
 	for key, s := range d.Components.SecuritySchemes.FromOldest() {
 		switch s.Type {
-		case "apiKey":
+		case kindAPIKey:
 			scheme := AuthScheme{
 				ConfigVar:   lowercaseFirst(key),
 				Description: s.Description,
 				Secret:      true,
 			}
-			if s.In == "header" && s.Name == "Authorization" {
+			if s.In == locationHeader && s.Name == headerAuthorization {
 				// Treat as bearer: runtime sends "Bearer <token>" on Authorization.
 				// Use AuthOverride if the API requires a different prefix.
-				scheme.Kind = "bearer"
-				scheme.HeaderName = "Authorization"
-			} else if s.In == "header" {
-				scheme.Kind = "apiKey"
+				scheme.Kind = kindBearer
+				scheme.HeaderName = headerAuthorization
+			} else if s.In == locationHeader {
+				scheme.Kind = kindAPIKey
 				scheme.HeaderName = s.Name
 			} else {
-				scheme.Kind = "apiKey"
+				scheme.Kind = kindAPIKey
 				scheme.QueryParam = s.Name
 			}
 			schemes = append(schemes, scheme)
-		case "http":
+		case schemeHTTP:
 			switch strings.ToLower(s.Scheme) {
-			case "bearer":
+			case kindBearer:
 				schemes = append(schemes, AuthScheme{
-					Kind:        "bearer",
-					ConfigVar:   "bearerToken",
-					HeaderName:  "Authorization",
+					Kind:        kindBearer,
+					ConfigVar:   configVarBearerToken,
+					HeaderName:  headerAuthorization,
 					Description: s.Description,
 					Secret:      true,
 				})
-			case "basic":
+			case kindBasic:
 				schemes = append(schemes, AuthScheme{
-					Kind:        "basic",
+					Kind:        kindBasic,
 					Description: s.Description,
 				})
 			}
 		case "oauth2", "openIdConnect":
 			schemes = append(schemes, AuthScheme{
-				Kind:        "bearer",
-				ConfigVar:   "bearerToken",
-				HeaderName:  "Authorization",
+				Kind:        kindBearer,
+				ConfigVar:   configVarBearerToken,
+				HeaderName:  headerAuthorization,
 				Description: s.Description,
 				Secret:      true,
 			})
@@ -1280,8 +1303,8 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 
 	for _, ctxParam := range contextPathParams(g.itemPath, idPathParam) {
 		if _, exists := inputs[ctxParam]; !exists {
-			inputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
-			outputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
+			inputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
+			outputs[ctxParam] = pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
 			requiredInputs = append(requiredInputs, ctxParam)
 		}
 	}
@@ -1382,7 +1405,7 @@ type typeCollectorV3 struct {
 // typeHint is a PascalCase name used to register an inline enum type if the schema declares enum values.
 func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy, typeHint string) pschema.PropertySpec {
 	if proxy == nil {
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
 	}
 	ref := proxy.GetReference()
 	if ref != "" {
@@ -1400,7 +1423,7 @@ func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy, typeHint
 
 func (tc *typeCollectorV3) convertSchema(schema *highbase.Schema, typeHint string) pschema.PropertySpec {
 	if schema == nil {
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}}
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}}
 	}
 	t := ""
 	if len(schema.Type) > 0 {
@@ -1426,32 +1449,32 @@ func (tc *typeCollectorV3) convertSchema(schema *highbase.Schema, typeHint strin
 	}
 
 	switch t {
-	case "integer":
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "integer"}, Description: schema.Description}
-	case "number":
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "number"}, Description: schema.Description}
-	case "boolean":
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "boolean"}, Description: schema.Description}
-	case "array":
+	case typeInteger:
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeInteger}, Description: schema.Description}
+	case typeNumber:
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeNumber}, Description: schema.Description}
+	case typeBoolean:
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeBoolean}, Description: schema.Description}
+	case typeArray:
 		itemSpec := tc.arrayItemSpec(schema)
 		return pschema.PropertySpec{
 			TypeSpec:    pschema.TypeSpec{Type: "array", Items: &itemSpec},
 			Description: schema.Description,
 		}
-	case "object":
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "object"}, Description: schema.Description}
+	case typeObject:
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeObject}, Description: schema.Description}
 	default:
-		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: "string"}, Description: schema.Description}
+		return pschema.PropertySpec{TypeSpec: pschema.TypeSpec{Type: typeString}, Description: schema.Description}
 	}
 }
 
 func (tc *typeCollectorV3) arrayItemSpec(schema *highbase.Schema) pschema.TypeSpec {
 	if schema.Items == nil {
-		return pschema.TypeSpec{Type: "string"}
+		return pschema.TypeSpec{Type: typeString}
 	}
 	itemProxy := schema.Items.A
 	if itemProxy == nil {
-		return pschema.TypeSpec{Type: "string"}
+		return pschema.TypeSpec{Type: typeString}
 	}
 	if ref := itemProxy.GetReference(); ref != "" {
 		if name := extractComponentSchemaName(ref); name != "" {
@@ -1462,12 +1485,12 @@ func (tc *typeCollectorV3) arrayItemSpec(schema *highbase.Schema) pschema.TypeSp
 	if s := itemProxy.Schema(); s != nil && len(s.Type) > 0 {
 		// Nested arrays (array-of-arrays) are not representable without inner items;
 		// fall back to string to keep the schema valid.
-		if s.Type[0] == "array" {
-			return pschema.TypeSpec{Type: "string"}
+		if s.Type[0] == typeArray {
+			return pschema.TypeSpec{Type: typeString}
 		}
 		return pschema.TypeSpec{Type: s.Type[0]}
 	}
-	return pschema.TypeSpec{Type: "string"}
+	return pschema.TypeSpec{Type: typeString}
 }
 
 func (tc *typeCollectorV3) ensureType(schemaName string) {
@@ -1489,7 +1512,7 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 
 	// Named enum type: scalar schema with enum values.
 	if len(schema.Enum) > 0 {
-		t := "string"
+		t := typeString
 		if len(schema.Type) > 0 {
 			t = schema.Type[0]
 		}

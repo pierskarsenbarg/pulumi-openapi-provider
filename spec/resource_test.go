@@ -114,15 +114,16 @@ const minimalSwagger = `{
 }`
 
 func TestDiscover_IdNotInSchema(t *testing.T) {
-	f, err := os.CreateTemp("", "spec-*.json")
+	f, err := os.CreateTemp(t.TempDir(), "spec-*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
 	if _, err := f.WriteString(minimalSwagger); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
@@ -203,15 +204,16 @@ const minimalOAS3 = `{
 
 func loadInline(t *testing.T, content string) spec.DiscoveryResult {
 	t.Helper()
-	f, err := os.CreateTemp("", "spec-*.json")
+	f, err := os.CreateTemp(t.TempDir(), "spec-*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
 	if _, err := f.WriteString(content); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -550,13 +552,16 @@ func TestAuthSchemes_OAS3_None(t *testing.T) {
 // Override application
 
 func TestDiscover_Override_Skip(t *testing.T) {
-	f, err := os.CreateTemp("", "spec-*.json")
+	f, err := os.CreateTemp(t.TempDir(), "spec-*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
-	f.WriteString(minimalSwagger)
-	f.Close()
+	if _, err := f.WriteString(minimalSwagger); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
@@ -576,13 +581,16 @@ func TestDiscover_Override_Skip(t *testing.T) {
 }
 
 func TestDiscover_Override_Token(t *testing.T) {
-	f, err := os.CreateTemp("", "spec-*.json")
+	f, err := os.CreateTemp(t.TempDir(), "spec-*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
-	f.WriteString(minimalSwagger)
-	f.Close()
+	if _, err := f.WriteString(minimalSwagger); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
@@ -636,17 +644,17 @@ const twoResourceSwagger = `{
   }
 }`
 
-
 func TestDiscover_WildcardOverride_AppliesToAll(t *testing.T) {
-	f, err := os.CreateTemp("", "spec-*.json")
+	f, err := os.CreateTemp(t.TempDir(), "spec-*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
 	if _, err := f.WriteString(twoResourceSwagger); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
@@ -669,15 +677,16 @@ func TestDiscover_WildcardOverride_AppliesToAll(t *testing.T) {
 }
 
 func TestDiscover_WildcardOverride_SpecificWins(t *testing.T) {
-	f, err := os.CreateTemp("", "spec-*.json")
+	f, err := os.CreateTemp(t.TempDir(), "spec-*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
 	if _, err := f.WriteString(twoResourceSwagger); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
@@ -820,15 +829,16 @@ const oas3WithTags = `{
 
 func loadInlineWithTags(t *testing.T, content string, excludeTags []string) spec.DiscoveryResult {
 	t.Helper()
-	f, err := os.CreateTemp("", "spec-*.json")
+	f, err := os.CreateTemp(t.TempDir(), "spec-*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
 	if _, err := f.WriteString(content); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 	doc, err := spec.Load("", f.Name(), nil)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -1196,11 +1206,11 @@ func TestEnum_V2_InlineStringEnum(t *testing.T) {
 		t.Fatal("InputSchema missing property \"status\"")
 	}
 	wantRef := "#/types/test:index:WidgetsStatus"
-	if prop.TypeSpec.Ref != wantRef {
-		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	if prop.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.Ref, wantRef)
 	}
-	if prop.TypeSpec.Type != "" {
-		t.Errorf("status TypeSpec.Type = %q, want empty (should use Ref)", prop.TypeSpec.Type)
+	if prop.Type != "" {
+		t.Errorf("status TypeSpec.Type = %q, want empty (should use Ref)", prop.Type)
 	}
 }
 
@@ -1269,8 +1279,8 @@ func TestEnum_V2_NamedEnum(t *testing.T) {
 		t.Fatal("InputSchema missing property \"status\"")
 	}
 	wantRef := "#/types/test:index:WidgetStatus"
-	if prop.TypeSpec.Ref != wantRef {
-		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	if prop.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.Ref, wantRef)
 	}
 }
 
@@ -1341,11 +1351,11 @@ func TestEnum_V3_InlineStringEnum(t *testing.T) {
 		t.Fatal("InputSchema missing property \"status\"")
 	}
 	wantRef := "#/types/test:index:WidgetsStatus"
-	if prop.TypeSpec.Ref != wantRef {
-		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	if prop.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.Ref, wantRef)
 	}
-	if prop.TypeSpec.Type != "" {
-		t.Errorf("status TypeSpec.Type = %q, want empty (should use Ref)", prop.TypeSpec.Type)
+	if prop.Type != "" {
+		t.Errorf("status TypeSpec.Type = %q, want empty (should use Ref)", prop.Type)
 	}
 }
 
@@ -1415,8 +1425,8 @@ func TestEnum_V3_NamedEnum(t *testing.T) {
 		t.Fatal("InputSchema missing property \"status\"")
 	}
 	wantRef := "#/types/test:index:WidgetStatus"
-	if prop.TypeSpec.Ref != wantRef {
-		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.TypeSpec.Ref, wantRef)
+	if prop.Ref != wantRef {
+		t.Errorf("status TypeSpec.Ref = %q, want %q", prop.Ref, wantRef)
 	}
 }
 

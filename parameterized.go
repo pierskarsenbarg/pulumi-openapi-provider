@@ -16,6 +16,11 @@ import (
 	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
 )
 
+const (
+	defaultPkgName    = "openapi"
+	defaultPkgVersion = "1.0.0"
+)
+
 // RunParameterizedProvider starts the openapi-provider binary in parameterized mode.
 // The spec URL (and optional --base-url override) are supplied at runtime via the
 // Parameterize RPC, allowing users to run:
@@ -80,7 +85,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		cliBaseURL = blob.BaseURL
 
 	default:
-		return p.ParameterizeResponse{}, fmt.Errorf("Parameterize: neither Args nor Value provided")
+		return p.ParameterizeResponse{}, fmt.Errorf("parameterize: neither Args nor Value provided")
 	}
 
 	doc, err := spec.LoadSpec(specSrc)
@@ -275,7 +280,7 @@ func slugifyTitle(title string) string {
 	}
 	result := strings.TrimRight(b.String(), "-")
 	if result == "" {
-		return "openapi"
+		return defaultPkgName
 	}
 	return result
 }
@@ -301,7 +306,7 @@ func normalizeVersion(v string) string {
 	}
 
 	if len(nums) == 0 {
-		return "1.0.0"
+		return defaultPkgVersion
 	}
 	for len(nums) < 3 {
 		nums = append(nums, "0")

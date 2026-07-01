@@ -45,7 +45,7 @@ func loadFromURL(url string, client *http.Client) (libopenapi.Document, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetching spec from %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("reading spec response body: %w", err)
@@ -67,7 +67,7 @@ func loadFromBytes(data []byte) (libopenapi.Document, error) {
 		return nil, fmt.Errorf("parsing spec: %w", err)
 	}
 	switch doc.GetSpecInfo().SpecFormat {
-	case "oas2", "oas3", "oas3_1", "oas3_2":
+	case specFormatOAS2, "oas3", "oas3_1", "oas3_2":
 		return doc, nil
 	default:
 		return nil, fmt.Errorf("not a recognised OpenAPI/Swagger spec (spec format %q)", doc.GetSpecInfo().SpecFormat)

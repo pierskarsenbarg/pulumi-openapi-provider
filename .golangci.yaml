@@ -1,0 +1,51 @@
+version: "2"
+
+linters:
+  enable:
+    - goconst
+    - gosec
+    - lll
+    - misspell
+    - modernize
+    - nakedret
+    - revive
+    - staticcheck
+    - unconvert
+    - usetesting
+  settings:
+    lll:
+      line-length: 160
+    usetesting:
+      os-temp-dir: true
+      context-background: true
+      context-todo: true
+    revive:
+      rules:
+        - name: package-comments
+          exclude:
+            - '**/internal/**'
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - goconst
+          - lll
+        path: "_test\\.go"
+      - linters:
+          - gosec
+        text: "G101"
+        path: "_test\\.go"
+    paths:
+      - vendor$
+      - third_party$
+      - testdata$
+
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - vendor$
+      - third_party$
+      - testdata$

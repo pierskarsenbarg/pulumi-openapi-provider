@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -79,9 +80,7 @@ func (c *crudClient) create(ctx context.Context, res spec.ResourceDef, inputs pr
 		// are available for URL substitution even when the create response omits them.
 		// Response fields overwrite inputs so no response data is lost.
 		pollingState := propertyMapToAPIBody(inputs, res.APIPropertyNames)
-		for k, v := range propertyMapToGoMap(apiBodyToPropertyMap(respBody, res.APIPropertyNames)) {
-			pollingState[k] = v
-		}
+		maps.Copy(pollingState, propertyMapToGoMap(apiBodyToPropertyMap(respBody, res.APIPropertyNames)))
 		if err := c.waitUntilExists(ctx, res, id, pollingState); err != nil {
 			return "", property.Map{}, fmt.Errorf("create %s: %w", res.Name, err)
 		}
@@ -99,7 +98,7 @@ func (c *crudClient) create(ctx context.Context, res spec.ResourceDef, inputs pr
 
 // read calls GET on the read endpoint and returns the current state.
 // Returns empty state if the resource no longer exists (404).
-func (c *crudClient) read(ctx context.Context, res spec.ResourceDef, id string, state map[string]interface{}) (property.Map, error) {
+func (c *crudClient) read(ctx context.Context, res spec.ResourceDef, id string, state map[string]any) (property.Map, error) {
 	path := substituteAllParams(res.ReadPath, id, res.IDPathParam, state)
 	respBody, err := c.requestNoBody(ctx, "GET", path)
 	if err != nil {
@@ -126,7 +125,7 @@ func (c *crudClient) update(ctx context.Context, res spec.ResourceDef, id string
 }
 
 // del calls DELETE on the delete endpoint.
-func (c *crudClient) del(ctx context.Context, res spec.ResourceDef, id string, state map[string]interface{}) error {
+func (c *crudClient) del(ctx context.Context, res spec.ResourceDef, id string, state map[string]any) error {
 	path := substituteAllParams(res.DeletePath, id, res.IDPathParam, state)
 	_, err := c.requestNoBody(ctx, "DELETE", path)
 	if err != nil && !isNotFound(err) {
@@ -143,7 +142,7 @@ func (c *crudClient) del(ctx context.Context, res spec.ResourceDef, id string, s
 
 // waitUntilExists polls the read endpoint until the resource returns a non-empty response
 // or the polling timeout is reached.
-func (c *crudClient) waitUntilExists(ctx context.Context, res spec.ResourceDef, id string, state map[string]interface{}) error {
+func (c *crudClient) waitUntilExists(ctx context.Context, res spec.ResourceDef, id string, state map[string]any) error {
 	return c.pollUntil(ctx, func() (bool, error) {
 		outputs, err := c.read(ctx, res, id, state)
 		if err != nil {
@@ -155,7 +154,7 @@ func (c *crudClient) waitUntilExists(ctx context.Context, res spec.ResourceDef, 
 
 // waitUntilGone polls the read endpoint until the resource returns 404 (empty outputs)
 // or the polling timeout is reached.
-func (c *crudClient) waitUntilGone(ctx context.Context, res spec.ResourceDef, id string, state map[string]interface{}) error {
+func (c *crudClient) waitUntilGone(ctx context.Context, res spec.ResourceDef, id string, state map[string]any) error {
 	return c.pollUntil(ctx, func() (bool, error) {
 		outputs, err := c.read(ctx, res, id, state)
 		if err != nil {
@@ -182,10 +181,7 @@ func (c *crudClient) pollUntil(ctx context.Context, condition func() (bool, erro
 		if remaining <= 0 {
 			return fmt.Errorf("%s", timeoutMsg)
 		}
-		sleep := interval
-		if sleep > remaining {
-			sleep = remaining
-		}
+		sleep := min(interval, remaining)
 		timer := time.NewTimer(sleep)
 		select {
 		case <-ctx.Done():
@@ -193,15 +189,12 @@ func (c *crudClient) pollUntil(ctx context.Context, condition func() (bool, erro
 			return ctx.Err()
 		case <-timer.C:
 		}
-		interval = time.Duration(float64(interval) * c.polling.Multiplier)
-		if interval > c.polling.MaxInterval {
-			interval = c.polling.MaxInterval
-		}
+		interval = min(time.Duration(float64(interval)*c.polling.Multiplier), c.polling.MaxInterval)
 	}
 }
 
 // request performs an HTTP call with a JSON body and returns the decoded response.
-func (c *crudClient) request(ctx context.Context, method, path string, body map[string]interface{}) (map[string]interface{}, error) {
+func (c *crudClient) request(ctx context.Context, method, path string, body map[string]any) (map[string]any, error) {
 	if c.cfg.GetBaseURL() == "" {
 		return nil, fmt.Errorf("baseUrl is not set: provide it via provider config or ensure the spec declares a server URL")
 	}
@@ -232,7 +225,7 @@ func (c *crudClient) request(ctx context.Context, method, path string, body map[
 }
 
 // requestNoBody performs an HTTP call without a request body.
-func (c *crudClient) requestNoBody(ctx context.Context, method, path string) (map[string]interface{}, error) {
+func (c *crudClient) requestNoBody(ctx context.Context, method, path string) (map[string]any, error) {
 	if c.cfg.GetBaseURL() == "" {
 		return nil, fmt.Errorf("baseUrl is not set: provide it via provider config or ensure the spec declares a server URL")
 	}
@@ -260,12 +253,12 @@ func isNotFound(err error) bool {
 	return false
 }
 
-func (c *crudClient) do(req *http.Request) (map[string]interface{}, error) {
+func (c *crudClient) do(req *http.Request) (map[string]any, error) {
 	resp, err := c.cfg.Client().Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == 404 {
 		return nil, &notFoundError{status: 404}
@@ -280,10 +273,10 @@ func (c *crudClient) do(req *http.Request) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("reading response: %w", err)
 	}
 	if len(data) == 0 {
-		return map[string]interface{}{}, nil
+		return map[string]any{}, nil
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, fmt.Errorf("decoding response: %w", err)
 	}
@@ -293,7 +286,7 @@ func (c *crudClient) do(req *http.Request) (map[string]interface{}, error) {
 // substituteAllParams replaces all {param} placeholders in path.
 // The resource ID is substituted first (using id + idParam), then any remaining
 // placeholders are filled from vals (the resource inputs or state map).
-func substituteAllParams(path, id, idParam string, vals map[string]interface{}) string {
+func substituteAllParams(path, id, idParam string, vals map[string]any) string {
 	result := path
 	if idParam != "" && id != "" {
 		result = strings.ReplaceAll(result, "{"+idParam+"}", id)
@@ -318,7 +311,7 @@ func substituteAllParams(path, id, idParam string, vals map[string]interface{}) 
 // extractID pulls the resource ID from a JSON response map.
 // It tries idField first, then idPathParam, then "id".
 // Keys may use dot notation to traverse nested objects (e.g. "metadata.name").
-func extractID(body map[string]interface{}, idField, idPathParam string) string {
+func extractID(body map[string]any, idField, idPathParam string) string {
 	candidates := []string{idField, idPathParam, "id"}
 	for _, key := range candidates {
 		if key == "" {
@@ -332,7 +325,7 @@ func extractID(body map[string]interface{}, idField, idPathParam string) string 
 }
 
 // nestedGet resolves a dot-separated key path into a map, e.g. "metadata.name".
-func nestedGet(m map[string]interface{}, path string) string {
+func nestedGet(m map[string]any, path string) string {
 	parts := strings.SplitN(path, ".", 2)
 	v, ok := m[parts[0]]
 	if !ok {
@@ -341,7 +334,7 @@ func nestedGet(m map[string]interface{}, path string) string {
 	if len(parts) == 1 {
 		return fmt.Sprintf("%v", v)
 	}
-	nested, ok := v.(map[string]interface{})
+	nested, ok := v.(map[string]any)
 	if !ok {
 		return ""
 	}
@@ -350,8 +343,8 @@ func nestedGet(m map[string]interface{}, path string) string {
 
 // propertyMapToAPIBody converts a property.Map to a plain Go map, translating camelCase
 // Pulumi property keys back to their original API names using the aliases map.
-func propertyMapToAPIBody(m property.Map, aliases map[string]string) map[string]interface{} {
-	result := map[string]interface{}{}
+func propertyMapToAPIBody(m property.Map, aliases map[string]string) map[string]any {
+	result := map[string]any{}
 	m.All(func(key string, val property.Value) bool {
 		apiKey := key
 		if aliases != nil {
@@ -368,7 +361,7 @@ func propertyMapToAPIBody(m property.Map, aliases map[string]string) map[string]
 // apiBodyToPropertyMap converts an API response map to a property.Map, translating API
 // property names to camelCase Pulumi names using the reverse of the aliases map.
 // Nested object keys are converted generically with toCamelCase.
-func apiBodyToPropertyMap(m map[string]interface{}, aliases map[string]string) property.Map {
+func apiBodyToPropertyMap(m map[string]any, aliases map[string]string) property.Map {
 	reverse := make(map[string]string, len(aliases))
 	for camel, api := range aliases {
 		reverse[api] = camel
@@ -385,8 +378,8 @@ func apiBodyToPropertyMap(m map[string]interface{}, aliases map[string]string) p
 }
 
 // propertyMapToGoMap converts a property.Map to a plain Go map for JSON marshaling.
-func propertyMapToGoMap(m property.Map) map[string]interface{} {
-	result := map[string]interface{}{}
+func propertyMapToGoMap(m property.Map) map[string]any {
+	result := map[string]any{}
 	m.All(func(key string, val property.Value) bool {
 		result[key] = propertyValueToGo(val)
 		return true
@@ -394,7 +387,7 @@ func propertyMapToGoMap(m property.Map) map[string]interface{} {
 	return result
 }
 
-func propertyValueToGo(v property.Value) interface{} {
+func propertyValueToGo(v property.Value) any {
 	switch {
 	case v.IsNull():
 		return nil
@@ -406,7 +399,7 @@ func propertyValueToGo(v property.Value) interface{} {
 		return v.AsString()
 	case v.IsArray():
 		arr := v.AsArray()
-		result := make([]interface{}, arr.Len())
+		result := make([]any, arr.Len())
 		for i, item := range arr.AsSlice() {
 			result[i] = propertyValueToGo(item)
 		}
@@ -419,7 +412,7 @@ func propertyValueToGo(v property.Value) interface{} {
 }
 
 // goMapToPropertyMap converts a plain Go map (from JSON) to a property.Map.
-func goMapToPropertyMap(m map[string]interface{}) property.Map {
+func goMapToPropertyMap(m map[string]any) property.Map {
 	vals := map[string]property.Value{}
 	for k, v := range m {
 		vals[k] = goValueToProperty(v)
@@ -427,7 +420,7 @@ func goMapToPropertyMap(m map[string]interface{}) property.Map {
 	return property.NewMap(vals)
 }
 
-func goValueToProperty(v interface{}) property.Value {
+func goValueToProperty(v any) property.Value {
 	if v == nil {
 		return property.New(property.Null)
 	}
@@ -438,13 +431,13 @@ func goValueToProperty(v interface{}) property.Value {
 		return property.New(tv)
 	case string:
 		return property.New(tv)
-	case []interface{}:
+	case []any:
 		items := make([]property.Value, len(tv))
 		for i, item := range tv {
 			items[i] = goValueToProperty(item)
 		}
 		return property.New(property.NewArray(items))
-	case map[string]interface{}:
+	case map[string]any:
 		return property.New(goMapToPropertyMap(tv))
 	default:
 		return property.New(fmt.Sprintf("%v", v))
