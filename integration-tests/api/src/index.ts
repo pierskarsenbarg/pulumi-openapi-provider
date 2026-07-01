@@ -11,7 +11,9 @@ const app = new Hono();
 
 let lastUserAgent = "";
 app.use("*", async (c, next) => {
-  lastUserAgent = c.req.header("user-agent") ?? "";
+  if (c.req.path !== "/debug/last-user-agent") {
+    lastUserAgent = c.req.header("user-agent") ?? "";
+  }
   await next();
 });
 app.get("/debug/last-user-agent", (c) => c.json({ userAgent: lastUserAgent }));
