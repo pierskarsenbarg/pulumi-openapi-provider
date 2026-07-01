@@ -39,7 +39,10 @@ type ProviderConfig struct {
 // New creates a ProviderConfig with an optional custom HTTP client, default base URL,
 // and the auth schemes discovered from the spec.
 // authHeaderOverride and tokenPrefixOverride are optional: pass "" / nil to use defaults.
-func New(client *http.Client, defaultBaseURL string, schemes []AuthScheme, authHeaderOverride string, tokenPrefixOverride *string, userAgent string) *ProviderConfig {
+func New(
+	client *http.Client, defaultBaseURL string, schemes []AuthScheme,
+	authHeaderOverride string, tokenPrefixOverride *string, userAgent string,
+) *ProviderConfig {
 	return &ProviderConfig{
 		httpClient:          client,
 		BaseURL:             defaultBaseURL,
