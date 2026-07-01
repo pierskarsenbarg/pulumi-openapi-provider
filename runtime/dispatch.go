@@ -14,7 +14,9 @@ import (
 // Build constructs a p.Provider that dispatches CRUD calls to the appropriate HTTP endpoints
 // based on the discovered resource definitions. hooks is keyed by Pulumi token and allows
 // per-resource function overrides; nil entries and nil hook fields fall back to built-in behaviour.
-func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.ProviderConfig, pollingEnabled bool, polling PollingConfig, hooks map[string]ResourceHooks) p.Provider {
+func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.ProviderConfig,
+	pollingEnabled bool, polling PollingConfig, hooks map[string]ResourceHooks,
+) p.Provider {
 	byToken := make(map[string]spec.ResourceDef, len(result.Resources))
 	for _, res := range result.Resources {
 		byToken[res.Token] = res
