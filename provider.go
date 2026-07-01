@@ -165,7 +165,7 @@ func RunProvider(ctx context.Context, name, version string, opts Options) error 
 // GetSchema parses the spec and returns the Pulumi schema JSON without starting the provider.
 // Useful in CI/CD pipelines to emit schema.json without running the full gRPC server.
 func GetSchema(name, version string, opts Options) (string, error) {
-	doc, err := spec.Load(opts.SpecURL, opts.SpecPath, opts.HTTPClient)
+	doc, err := spec.Load(opts.SpecURL, opts.SpecPath, opts.HTTPClient, resolveUserAgent(opts.UserAgent, version))
 	if err != nil {
 		return "", fmt.Errorf("loading spec: %w", err)
 	}
@@ -181,7 +181,8 @@ func GetSchema(name, version string, opts Options) (string, error) {
 
 // buildDynamicProvider creates the raw p.Provider that handles OpenAPI-derived resources.
 func buildDynamicProvider(name, version string, opts Options) (p.Provider, error) {
-	doc, err := spec.Load(opts.SpecURL, opts.SpecPath, opts.HTTPClient)
+	userAgent := resolveUserAgent(opts.UserAgent, version)
+	doc, err := spec.Load(opts.SpecURL, opts.SpecPath, opts.HTTPClient, userAgent)
 	if err != nil {
 		return p.Provider{}, fmt.Errorf("loading spec: %w", err)
 	}
@@ -203,11 +204,20 @@ func buildDynamicProvider(name, version string, opts Options) (p.Provider, error
 		authHeaderOverride = opts.AuthOverride.HeaderName
 		tokenPrefixOverride = &opts.AuthOverride.TokenPrefix
 	}
-	cfg := config.New(opts.HTTPClient, baseURL, convertAuthSchemes(result.AuthSchemes), authHeaderOverride, tokenPrefixOverride)
+	cfg := config.New(opts.HTTPClient, baseURL, convertAuthSchemes(result.AuthSchemes), authHeaderOverride, tokenPrefixOverride, userAgent)
 	polling := runtime.ResolvePollingConfig(opts.PollingOptions.Timeout, opts.PollingOptions.InitialInterval,
 		opts.PollingOptions.MaxInterval, opts.PollingOptions.Multiplier)
 	hooks := buildHooks(result.Resources, opts.Overrides)
 	return runtime.Build(name, version, result, cfg, !opts.DisablePolling, polling, hooks), nil
+}
+
+// resolveUserAgent returns the explicit override if set, otherwise the default
+// "pulumi-openapi-provider/{version}" string.
+func resolveUserAgent(override, version string) string {
+	if override != "" {
+		return override
+	}
+	return fmt.Sprintf("pulumi-openapi-provider/%s", version)
 }
 
 func convertAuthSchemes(in []spec.AuthScheme) []config.AuthScheme {

@@ -1,7 +1,11 @@
 package openapi
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	p "github.com/pulumi/pulumi-go-provider"
 )
 
 func TestSlugifyTitle(t *testing.T) {
@@ -48,6 +52,53 @@ func TestNormalizeVersion(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("normalizeVersion(%q) = %q, want %q", tc.input, got, tc.want)
 		}
+	}
+}
+
+func TestResolveUserAgent(t *testing.T) {
+	tests := []struct {
+		name     string
+		override string
+		version  string
+		want     string
+	}{
+		{"default", "", "1.2.3", "pulumi-openapi-provider/1.2.3"},
+		{"override", "my-agent/9.9.9", "1.2.3", "my-agent/9.9.9"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveUserAgent(tc.override, tc.version)
+			if got != tc.want {
+				t.Errorf("resolveUserAgent(%q, %q) = %q, want %q", tc.override, tc.version, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestParameterize_AlwaysUsesDefaultUserAgent(t *testing.T) {
+	var gotUserAgent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUserAgent = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write([]byte(`swagger: "2.0"
+info:
+  title: Test API
+  version: "1.0"
+paths: {}
+`))
+	}))
+	defer srv.Close()
+
+	pp := &parameterizedProvider{binaryVersion: "9.9.9"}
+	// --user-agent is not a recognised flag; it must not influence the resolved UA.
+	_, err := pp.parameterize(t.Context(), p.ParameterizeRequest{
+		Args: &p.ParameterizeRequestArgs{Args: []string{srv.URL, "--user-agent=should-be-ignored/1.0"}},
+	})
+	if err != nil {
+		t.Fatalf("parameterize: %v", err)
+	}
+	if want := "pulumi-openapi-provider/9.9.9"; gotUserAgent != want {
+		t.Errorf("User-Agent = %q, want %q", gotUserAgent, want)
 	}
 }
 

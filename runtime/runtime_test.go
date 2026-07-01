@@ -315,7 +315,7 @@ func testServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *conf
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
-	cfg := config.New(nil, srv.URL, nil, "", nil)
+	cfg := config.New(nil, srv.URL, nil, "", nil, "")
 	return srv, cfg
 }
 
@@ -353,6 +353,41 @@ func TestCRUD_Create(t *testing.T) {
 	}
 	if v, _ := outputs.GetOk("name"); v.AsString() != "Foo" {
 		t.Errorf("name = %q, want Foo", v.AsString())
+	}
+}
+
+func TestCRUD_SetsUserAgentHeader(t *testing.T) {
+	var gotCreateUA, gotReadUA string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.Method {
+		case http.MethodPost:
+			gotCreateUA = r.Header.Get("User-Agent")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"widgetId": "42", "name": "Foo"})
+		case http.MethodGet:
+			gotReadUA = r.Header.Get("User-Agent")
+			_ = json.NewEncoder(w).Encode(map[string]any{"widgetId": "42", "name": "Foo"})
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := config.New(nil, srv.URL, nil, "", nil, "my-provider/1.0")
+	client := &crudClient{cfg: cfg}
+
+	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
+	if _, _, err := client.create(t.Context(), testResource(), inputs); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if gotCreateUA != "my-provider/1.0" {
+		t.Errorf("create User-Agent = %q, want my-provider/1.0", gotCreateUA)
+	}
+
+	if _, err := client.read(t.Context(), testResource(), "42", nil); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if gotReadUA != "my-provider/1.0" {
+		t.Errorf("read User-Agent = %q, want my-provider/1.0", gotReadUA)
 	}
 }
 
@@ -472,7 +507,7 @@ func TestCRUD_Delete_NotFound_IsOK(t *testing.T) {
 }
 
 func TestCRUD_Create_EmptyBaseURL(t *testing.T) {
-	cfg := config.New(nil, "", nil, "", nil)
+	cfg := config.New(nil, "", nil, "", nil, "")
 	client := &crudClient{cfg: cfg}
 	inputs := property.NewMap(map[string]property.Value{"name": property.New("Foo")})
 	_, _, err := client.create(t.Context(), testResource(), inputs)
@@ -485,7 +520,7 @@ func TestCRUD_Create_EmptyBaseURL(t *testing.T) {
 }
 
 func TestCRUD_Read_EmptyBaseURL(t *testing.T) {
-	cfg := config.New(nil, "", nil, "", nil)
+	cfg := config.New(nil, "", nil, "", nil, "")
 	client := &crudClient{cfg: cfg}
 	_, err := client.read(t.Context(), testResource(), "42", nil)
 	if err == nil {
@@ -613,7 +648,7 @@ func TestHandleCheck_ContextParamRequired(t *testing.T) {
 // --- Configure ---
 
 func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
-	cfg := config.New(nil, "", nil, "", nil)
+	cfg := config.New(nil, "", nil, "", nil, "")
 	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg, false, PollingConfig{}, nil)
 	args := property.NewMap(map[string]property.Value{
 		"baseUrl": property.New("https://api.example.com"),
@@ -625,7 +660,7 @@ func TestConfigure_OKWhenBaseURLFromConfig(t *testing.T) {
 }
 
 func TestConfigure_OKWhenBaseURLFromDefault(t *testing.T) {
-	cfg := config.New(nil, "https://api.example.com", nil, "", nil)
+	cfg := config.New(nil, "https://api.example.com", nil, "", nil, "")
 	provider := Build("test", "0.0.0", spec.DiscoveryResult{}, cfg, false, PollingConfig{}, nil)
 	err := provider.Configure(t.Context(), p.ConfigureRequest{})
 	if err != nil {

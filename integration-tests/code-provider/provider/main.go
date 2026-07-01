@@ -93,7 +93,8 @@ type officeResponse struct {
 func main() {
 	ctx := context.Background()
 	builder, err := openapi.NewProviderBuilder("testapi", "0.1.0", openapi.Options{
-		SpecURL: "http://localhost:3000/openapi",
+		SpecURL:   "http://localhost:3000/openapi",
+		UserAgent: "pulumi-openapi-provider-integration-test/1.0",
 		Overrides: map[string]openapi.ResourceOverride{
 			"Users": {
 				Check: userEmailCheck,

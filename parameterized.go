@@ -88,7 +88,8 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		return p.ParameterizeResponse{}, fmt.Errorf("parameterize: neither Args nor Value provided")
 	}
 
-	doc, err := spec.LoadSpec(specSrc)
+	userAgent := resolveUserAgent("", pp.binaryVersion)
+	doc, err := spec.LoadSpec(specSrc, userAgent)
 	if err != nil {
 		return p.ParameterizeResponse{}, fmt.Errorf("loading spec: %w", err)
 	}
@@ -126,7 +127,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		return p.ParameterizeResponse{}, fmt.Errorf("discovering resources: %w", err)
 	}
 
-	cfg := config.New(nil, baseURL, convertAuthSchemes(result.AuthSchemes), "", nil)
+	cfg := config.New(nil, baseURL, convertAuthSchemes(result.AuthSchemes), "", nil, userAgent)
 	polling := runtime.ResolvePollingConfig(0, 0, 0, 0)
 	inner := runtime.Build(pkgName, pkgVersion.String(), result, cfg, true, polling, nil)
 

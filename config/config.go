@@ -33,12 +33,13 @@ type ProviderConfig struct {
 	httpClient          *http.Client
 	authHeaderOverride  string  // custom header name; empty = use default
 	tokenPrefixOverride *string // custom prefix; nil = use default; pointer to allow empty string
+	userAgent           string  // "User-Agent" header sent with every request; empty = no header
 }
 
 // New creates a ProviderConfig with an optional custom HTTP client, default base URL,
 // and the auth schemes discovered from the spec.
 // authHeaderOverride and tokenPrefixOverride are optional: pass "" / nil to use defaults.
-func New(client *http.Client, defaultBaseURL string, schemes []AuthScheme, authHeaderOverride string, tokenPrefixOverride *string) *ProviderConfig {
+func New(client *http.Client, defaultBaseURL string, schemes []AuthScheme, authHeaderOverride string, tokenPrefixOverride *string, userAgent string) *ProviderConfig {
 	return &ProviderConfig{
 		httpClient:          client,
 		BaseURL:             defaultBaseURL,
@@ -46,6 +47,7 @@ func New(client *http.Client, defaultBaseURL string, schemes []AuthScheme, authH
 		schemeValues:        map[string]string{},
 		authHeaderOverride:  authHeaderOverride,
 		tokenPrefixOverride: tokenPrefixOverride,
+		userAgent:           userAgent,
 	}
 }
 
@@ -157,6 +159,14 @@ func (c *ProviderConfig) bearerValue(token string) string {
 		return token
 	}
 	return prefix + " " + token
+}
+
+// UserAgent returns the "User-Agent" header value to send with requests, or ""
+// if none was configured.
+func (c *ProviderConfig) UserAgent() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.userAgent
 }
 
 // GetBaseURL returns the current base URL.
