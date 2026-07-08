@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/spec"
 )
 
 func TestDiscover_Petstore(t *testing.T) {
