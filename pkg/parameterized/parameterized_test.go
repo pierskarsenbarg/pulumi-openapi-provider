@@ -1,4 +1,4 @@
-package openapi
+package parameterized
 
 import (
 	"net/http"
@@ -52,26 +52,6 @@ func TestNormalizeVersion(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("normalizeVersion(%q) = %q, want %q", tc.input, got, tc.want)
 		}
-	}
-}
-
-func TestResolveUserAgent(t *testing.T) {
-	tests := []struct {
-		name     string
-		override string
-		version  string
-		want     string
-	}{
-		{"default", "", "1.2.3", "pulumi-openapi-provider/1.2.3"},
-		{"override", "my-agent/9.9.9", "1.2.3", "my-agent/9.9.9"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := resolveUserAgent(tc.override, tc.version)
-			if got != tc.want {
-				t.Errorf("resolveUserAgent(%q, %q) = %q, want %q", tc.override, tc.version, got, tc.want)
-			}
-		})
 	}
 }
 

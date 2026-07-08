@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/spec"
 )
 
 func TestLoad_RejectsNonOpenAPIDocument(t *testing.T) {

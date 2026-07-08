@@ -7,8 +7,8 @@ import (
 
 	p "github.com/pulumi/pulumi-go-provider"
 
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/config"
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/config"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/spec"
 )
 
 // Build constructs a p.Provider that dispatches CRUD calls to the appropriate HTTP endpoints

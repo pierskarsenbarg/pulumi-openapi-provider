@@ -8,7 +8,7 @@ import (
 	p "github.com/pulumi/pulumi-go-provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/config"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/config"
 )
 
 func req(args map[string]string) p.ConfigureRequest {
@@ -267,5 +267,25 @@ func TestUserAgent_Custom(t *testing.T) {
 	cfg := config.New(nil, "", nil, "", nil, "my-provider/1.0")
 	if cfg.UserAgent() != "my-provider/1.0" {
 		t.Errorf("UserAgent() = %q, want my-provider/1.0", cfg.UserAgent())
+	}
+}
+
+func TestResolveUserAgent(t *testing.T) {
+	tests := []struct {
+		name     string
+		override string
+		version  string
+		want     string
+	}{
+		{"default", "", "1.2.3", "pulumi-openapi-provider/1.2.3"},
+		{"override", "my-agent/9.9.9", "1.2.3", "my-agent/9.9.9"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := config.ResolveUserAgent(tc.override, tc.version)
+			if got != tc.want {
+				t.Errorf("ResolveUserAgent(%q, %q) = %q, want %q", tc.override, tc.version, got, tc.want)
+			}
+		})
 	}
 }

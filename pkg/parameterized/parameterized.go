@@ -1,4 +1,7 @@
-package openapi
+// Package parameterized implements the openapi-provider binary in parameterized mode,
+// where the spec URL (and optional base URL) are supplied at runtime via the
+// Parameterize RPC rather than baked in at compile time.
+package parameterized
 
 import (
 	"context"
@@ -11,9 +14,9 @@ import (
 	p "github.com/pulumi/pulumi-go-provider"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/config"
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/runtime"
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/config"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/runtime"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/spec"
 )
 
 const (
@@ -88,7 +91,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		return p.ParameterizeResponse{}, fmt.Errorf("parameterize: neither Args nor Value provided")
 	}
 
-	userAgent := resolveUserAgent("", pp.binaryVersion)
+	userAgent := config.ResolveUserAgent("", pp.binaryVersion)
 	doc, err := spec.LoadSpec(specSrc, userAgent)
 	if err != nil {
 		return p.ParameterizeResponse{}, fmt.Errorf("loading spec: %w", err)
@@ -127,7 +130,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		return p.ParameterizeResponse{}, fmt.Errorf("discovering resources: %w", err)
 	}
 
-	cfg := config.New(nil, baseURL, convertAuthSchemes(result.AuthSchemes), "", nil, userAgent)
+	cfg := config.New(nil, baseURL, config.AuthSchemesFromSpec(result.AuthSchemes), "", nil, userAgent)
 	polling := runtime.ResolvePollingConfig(0, 0, 0, 0)
 	inner := runtime.Build(pkgName, pkgVersion.String(), result, cfg, true, polling, nil)
 

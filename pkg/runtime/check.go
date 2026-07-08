@@ -7,7 +7,7 @@ import (
 
 	p "github.com/pulumi/pulumi-go-provider"
 
-	"github.com/pierskarsenbarg/pulumi-openapi-provider/spec"
+	"github.com/pierskarsenbarg/pulumi-openapi-provider/pkg/spec"
 )
 
 // handleCheck validates that all required inputs are present, returning per-property
