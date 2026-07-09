@@ -89,12 +89,6 @@ func (c *ProviderConfig) Apply(req p.ConfigureRequest) {
 			}
 		}
 	}
-
-	if c.BaseURL == "" {
-		if v, ok := req.Variables["baseUrl"]; ok && v != "" {
-			c.BaseURL = v
-		}
-	}
 }
 
 // AuthHeaders returns HTTP headers derived from the configured auth settings.

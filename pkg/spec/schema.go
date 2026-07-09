@@ -60,8 +60,8 @@ func providerConfigSpec(schemes []AuthScheme) pschema.ConfigSpec {
 	return pschema.ConfigSpec{Variables: authConfigVars(schemes)}
 }
 
-func providerSpec(schemes []AuthScheme) pschema.ResourceSpec {
-	return pschema.ResourceSpec{InputProperties: authConfigVars(schemes)}
+func providerSpec(schemes []AuthScheme) *pschema.ResourceSpec {
+	return &pschema.ResourceSpec{InputProperties: authConfigVars(schemes)}
 }
 
 // authConfigVars returns the Pulumi config variable map derived from the discovered security

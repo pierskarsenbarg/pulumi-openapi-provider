@@ -73,17 +73,6 @@ func TestApply_BaseURL_Trimmed(t *testing.T) {
 	}
 }
 
-func TestApply_BaseURL_FromVariables(t *testing.T) {
-	cfg := config.New(nil, "", nil, "", nil, "")
-	cfg.Apply(p.ConfigureRequest{
-		Args:      property.NewMap(map[string]property.Value{}),
-		Variables: map[string]string{"baseUrl": "https://via-vars.example.com"},
-	})
-	if cfg.GetBaseURL() != "https://via-vars.example.com" {
-		t.Errorf("BaseURL = %q, want https://via-vars.example.com", cfg.GetBaseURL())
-	}
-}
-
 // --- apiKey scheme ---
 
 func TestApply_APIKey_Header(t *testing.T) {
