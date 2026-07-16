@@ -9,7 +9,7 @@
     "studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@hono/standard-validator": "^0.2.2",
+    "@hono/standard-validator": "^0.3.0",
     "@hono/valibot-validator": "^0.6.1",
     "@valibot/to-json-schema": "^1.0.0",
     "drizzle-orm": "^0.45.2",
