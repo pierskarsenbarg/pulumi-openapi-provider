@@ -44,7 +44,7 @@ pulumi package add openapi-provider 'https://api.example.com/openapi.json' \
   --base-url=https://api.example.com
 ```
 
-If neither the spec nor `--base-url` provides a base URL, the command exits with a clear error.
+If neither the spec nor `--base-url` provides a base URL, `pulumi package add` still succeeds — the SDK generates fine, and the failure surfaces on the first API call as `baseUrl is not set: provide it via provider config or ensure the spec declares a server URL`. Users can also supply it at deploy time with `pulumi config set <package-name>:baseUrl https://api.example.com`.
 
 ### Provider configuration
 
@@ -72,6 +72,28 @@ The framework groups API paths by their static prefix, then detects CRUD operati
 
 Each discovered group becomes a Pulumi resource. The path parameter on the Read/Delete endpoint (`{id}`) is used as the resource identifier.
 
+A group is only emitted when it has a **create** operation plus **read or delete**. Groups that fail that test are dropped silently — no warning, no error, just a resource missing from the generated SDK. Update is optional: a resource without one is still emitted, and property changes then no-op rather than reaching the API.
+
+Update is also only detected on the item path. These are *not* recognised, and need an override (see [Overriding convention-based behaviour](#overriding-convention-based-behaviour)):
+
+- `PUT /things` or `PATCH /things` — update with the ID in the request body
+- `POST /things/{id}` — the Swagger Petstore's form-encoded update
+- any update under a different path, e.g. `/things/{id}/rename`
+
+### Resource names and tokens
+
+Resource names are a PascalCase join of the collection path's **static** segments; `{param}` segments are skipped and `-`, `_`, `.` split words. A leading `api` segment is stripped, and nothing else is:
+
+| Collection path | Resource name |
+| --------------- | ------------- |
+| `/pet` | `Pet` |
+| `/store/order` | `StoreOrder` |
+| `/orgs/{orgId}/teams` | `OrgsTeams` |
+| `/api/widgets` | `Widgets` |
+| `/extras/gadgets` | `ExtrasGadgets` |
+
+The Pulumi token is `<package>:<module>:<Name>`. The module is the first operation tag that also appears in the spec's root `tags` list, lowercased and stripped of non-alphanumerics (`"AI Content"` → `aicontent`); when there is no such tag it is `index`. So a spec declaring root tags produces `petstore:pet:Pet`, not `petstore:index:Pet` — which changes the import path in generated SDKs. Complex and enum types always live in `index`.
+
 ### Type mapping
 
 OpenAPI schema types are mapped to Pulumi property types:
@@ -85,7 +107,14 @@ OpenAPI schema types are mapped to Pulumi property types:
 | `array`      | `array`     |
 | `object`     | `object`    |
 
-**Enums** are fully supported for both Swagger 2.0 and OpenAPI 3.x. Named enum definitions (referenced via `$ref`) and inline enum values on properties are both registered as typed Pulumi enum types. The enum values' native types (string, integer, number, boolean) are preserved. Empty-string enum values are silently dropped as they cannot produce valid SDK constant names.
+Anything else — including a schema with no `type` — maps to `string`. Four limits worth knowing before relying on schema fidelity:
+
+- An inline `type: object` becomes an opaque `object` with no properties. Only `$ref`'d schemas become named types with real fields, so hoisting an inline object into `components/schemas` and `$ref`ing it is what makes it typed.
+- Arrays of arrays degrade to `string`, because the inner item type can't be represented.
+- `format` (`date-time`, `int64`, `uuid`) is ignored; every property gets the base type.
+- `allOf` / `anyOf` are not merged. A schema composed purely of `allOf` yields a type with no properties. (One `oneOf` case is handled: a property-less request body whose `oneOf` holds a single-object and a bulk-array variant uses the first non-array variant.)
+
+**Enums** are fully supported for both Swagger 2.0 and OpenAPI 3.x. Named enum definitions (referenced via `$ref`) and inline enum values on properties are both registered as typed Pulumi enum types. The enum values' native types (string, integer, number, boolean) are preserved. Empty-string and `null` enum values are silently dropped, as they cannot produce valid SDK constant names — if a spec uses `""` to mean "unset", that state has no constant in the generated SDK and the property is better modelled as a plain string.
 
 ## Installation
 
@@ -173,11 +202,20 @@ p.RunProvider(context.Background(), "myprovider", "0.1.0", provider)
 
 The framework derives provider configuration variables automatically from the spec's `securityDefinitions` (Swagger 2.0) or `components/securitySchemes` (OAS3):
 
-| Spec scheme type         | Generated config variable                | HTTP effect                     |
-| ------------------------ | ---------------------------------------- | ------------------------------- |
-| `apiKey` in header       | secret string named after the scheme key | sets the declared header        |
-| `http` bearer / `oauth2` | `bearerToken` (secret string)            | `Authorization: Bearer <value>` |
-| `http` basic             | `username` + `password` (secret)         | `Authorization: Basic <base64>` |
+| Spec scheme type                        | Generated config variable                 | HTTP effect                       |
+| --------------------------------------- | ----------------------------------------- | --------------------------------- |
+| `apiKey` in header                      | scheme key, first letter lowercased (secret) | sets the declared header       |
+| `apiKey` in header, named `Authorization` | scheme key, first letter lowercased (secret) | `Authorization: bearer <value>` |
+| `apiKey` in query                       | scheme key, first letter lowercased (secret) | **nothing — see below**         |
+| `http` bearer / `oauth2` / `openIdConnect` | `bearerToken` (secret)                 | `Authorization: bearer <value>`   |
+| `http` basic                            | `username` + `password` (secret)          | `Authorization: Basic <base64>`   |
+
+Two things to watch:
+
+- Config variables for `apiKey` schemes are named after the **scheme key in the spec**, not the header, and only the first character is lowercased. A scheme keyed `X-Auth-Token` produces the config variable `x-Auth-Token`, so users run `pulumi config set myprovider:x-Auth-Token <value> --secret`. Only `http bearer`, `oauth2` and `openIdConnect` produce a variable literally named `bearerToken`.
+- **`apiKey` in query is not yet sent.** The variable is generated and accepted, but no query parameter is added to requests, so calls go out unauthenticated and the API answers 401 with nothing in the provider output pointing at the cause. Until this is supported, use a custom `Options.HTTPClient` whose `RoundTripper` appends the parameter.
+
+The default bearer prefix is lowercase `bearer`. Use `Options.AuthOverride` to change it (see [Non-standard auth conventions](#non-standard-auth-conventions)).
 
 `baseUrl` is always available to override the server URL from the spec.
 
@@ -194,7 +232,7 @@ To supply a fixed base URL at build time rather than leaving it to users, set `O
 
 ### Non-standard auth conventions
 
-Some APIs accept a token but don't follow standard header or prefix conventions — for example using `X-Auth-Token` instead of `Authorization`, or `token <value>` instead of `bearer <value>`. Use `Options.AuthOverride` to handle this at build time (library mode only; not available in the parameterized provider):
+Some APIs accept a token but don't follow standard header or prefix conventions — for example wanting `token <value>` instead of `bearer <value>`, or reading a header the spec doesn't declare. Use `Options.AuthOverride` to handle this at build time (library mode only; not available in the parameterized provider):
 
 ```go
 openapi.Options{
@@ -207,6 +245,28 @@ openapi.Options{
 ```
 
 Both fields are optional — set only the ones you need. The credential value itself is always supplied by the end-user via `pulumi config set` at runtime.
+
+`AuthOverride` affects **bearer-style credentials only**: the `bearerToken` path, an `apiKey` scheme declared on the `Authorization` header, and the no-schemes fallback. It does nothing to an `apiKey` scheme that names its own header — a spec declaring `apiKey in: header, name: X-Auth-Token` already sends exactly that header, so no override is needed.
+
+## Other options
+
+| Option | Purpose |
+| ------ | ------- |
+| `ExcludeTags` | Skip every resource whose CRUD operations carry one of these operation tags. The lever for trimming large specs down to the resources you actually want to ship. |
+| `HTTPClient` | Custom `*http.Client` for both the spec fetch and API calls — the hook for mTLS, kubeconfig transports, signing round-trippers and proxies. See [`examples/openapi-k8s`](examples/openapi-k8s). |
+| `UserAgent` | Replaces the default `pulumi-openapi-provider/<version>` header sent with every request. |
+| `DisablePolling` | Skip the post-create "wait until it exists" and post-delete "wait until it's gone" reads. |
+| `PollingOptions` | Tune that polling: `Timeout` (default 5 min), `InitialInterval` (1 s), `MaxInterval` (30 s), `Multiplier` (1.5). |
+
+```go
+openapi.Options{
+    SpecURL:        "https://api.example.com/openapi.json",
+    ExcludeTags:    []string{"internal", "beta"},
+    PollingOptions: openapi.PollingOptions{Timeout: 30 * time.Second},
+}
+```
+
+With polling enabled (the default) the state recorded after create comes from a fresh read of the resource; with `DisablePolling` it is whatever the create response returned.
 
 ## Adding resources not in the spec
 
@@ -230,10 +290,14 @@ When an API doesn't follow standard REST conventions, use `ResourceOverride`:
 openapi.Options{
     SpecURL: "https://api.example.com/openapi.json",
     Overrides: map[string]openapi.ResourceOverride{
-        // Provide an update endpoint that uses a body ID instead of a path param
+        // Wire up an update endpoint discovery didn't find, where the ID is in the URL
         "Pet": {
             UpdatePath:   "/pet/{petId}",
             UpdateMethod: "PUT",
+        },
+        // Read the resource ID from a differently-named response field
+        "Org": {
+            IDField: "org_id",
         },
         // Rename a resource's Pulumi token
         "InventoryItem": {
@@ -247,6 +311,8 @@ openapi.Options{
 }
 ```
 
+Keys are the **discovered** resource names (`"Pet"`, `"StoreOrder"`, `"OrgsTeams"`), not tokens. A key that matches nothing is ignored silently.
+
 | Field                         | Description                                                      |
 | ----------------------------- | ---------------------------------------------------------------- |
 | `Skip`                        | Exclude this resource from discovery                             |
@@ -257,6 +323,48 @@ openapi.Options{
 | `DeletePath`                  | Override the delete endpoint                                     |
 | `IDPathParam`                 | Override the path parameter name used as the resource ID         |
 | `IDField`                     | Override the JSON response field used to extract the resource ID |
+| `Check` / `Diff`              | Replace input validation / diff computation for this resource    |
+| `Create` / `Read` / `Update` / `Delete` | Replace the generated HTTP call for one operation       |
+
+### The `IDField` override
+
+At create time the resource ID is pulled out of the JSON response by looking for `IDField`, then `IDPathParam`, then `"id"`, using the API's own property names (dot notation traverses nested objects, e.g. `metadata.name`). If none is present, create fails with `could not extract ID from response (looked for field "…")`. A response of `{"org_id": …}` therefore needs `IDField: "org_id"` — the camelCased `orgId` will not match.
+
+### Function hooks
+
+The same struct carries optional functions that replace the generated behaviour for one resource. Any nil hook falls back to the built-in implementation, so hooks are for the one operation an API does strangely rather than an all-or-nothing takeover:
+
+```go
+Overrides: map[string]openapi.ResourceOverride{
+    "User": {
+        Check: func(ctx context.Context, req p.CheckRequest) (p.CheckResponse, error) {
+            email, ok := req.Inputs.GetOk("email")
+            if ok && email.IsString() && !strings.Contains(email.AsString(), "@") {
+                return p.CheckResponse{Inputs: req.Inputs, Failures: []p.CheckFailure{
+                    {Property: "email", Reason: "email must contain @"}}}, nil
+            }
+            return p.CheckResponse{Inputs: req.Inputs}, nil
+        },
+    },
+}
+```
+
+A hook receives only the Pulumi request — it has no handle on the resolved base URL or credentials, so a hook that calls the API must bring its own client and configuration.
+
+**Body-ID updates need a hook, not a path override.** `id` is stripped from the input schema during discovery (Pulumi reserves it), so an override pointing update at `PUT /things` would send a body with no ID — and APIs that treat an ID-less PUT as a create will duplicate the resource rather than erroring. Either use an `Update` hook that re-injects the ID, or override `UpdatePath` to the item path and rewrite the request in a `RoundTripper` on `Options.HTTPClient`, which keeps the provider's configured base URL and auth headers.
+
+### The wildcard key
+
+`Overrides["*"]` applies to every resource as a baseline, and a named entry wins field by field:
+
+```go
+Overrides: map[string]openapi.ResourceOverride{
+    "*":       {IDField: "metadata.name"},
+    "Configs": {IDField: "uid"},
+}
+```
+
+`Skip` is not read from the wildcard — `"*": {Skip: true}` disables nothing.
 
 ## Examples
 
