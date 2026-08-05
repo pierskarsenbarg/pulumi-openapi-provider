@@ -61,7 +61,7 @@ Options{SpecURL/SpecPath}
 ```
 Parameterize(Args: ["https://spec.url", "--base-url=https://api.url"])
   → parseParamArgs()               # splits spec URL and optional --base-url flag
-  → spec.Load(specURL)             # fetches the spec
+  → spec.LoadSpec(specSrc)         # http(s):// is fetched; file:// or a bare path is read from disk
   → spec.BaseURL(doc)              # extracts server URL from spec (empty if not declared)
   → slugifyTitle(info.title)       # derives package name, e.g. "Petstore API" → "petstore-api"
   → normalizeVersion(info.version) # normalises to semver X.Y.Z
@@ -72,7 +72,7 @@ Parameterize(Args: ["https://spec.url", "--base-url=https://api.url"])
 GetSchema()
   → paramState.inner.GetSchema()   # returns schema built during Parameterize
   → injects PackageSpec.Parameterization{BaseProvider, Parameter: blob}
-                                   # blob = JSON{specURL, baseURL}; embedded in generated SDKs
+                                   # blob = JSON{spec, baseURL}; embedded in generated SDKs
                                    # and echoed back as ParameterizeRequestValue.Value on re-use
 ```
 
@@ -82,7 +82,11 @@ GetSchema()
 
 `groupPathStrings` is the shared core. For every path ending in `{param}`, that path is an **item** and its parent (all segments except the last) is the **collection**. Paths are processed deepest-first; once a path is claimed as a collection it cannot also appear as a shallower item. This handles both simple paths (`/pet/{petId}`) and org-scoped paths (`/api/orgs/{orgName}/tokens/{tokenId}`).
 
-Resource names are derived by CamelCase-joining the **static** (non-`{param}`) segments of the collection path.
+Resource names are derived by CamelCase-joining the **static** (non-`{param}`) segments of the collection path. A leading `api` segment is dropped (`/api/widgets` → `Widgets`); no other prefix is special.
+
+A group is only emitted when `buildResourceV2`/`buildResourceV3` finds a **create** operation plus **read or delete** — otherwise it returns `ok == false` and the group vanishes with no diagnostic. Update is optional and is only read off the item path (`PUT` preferred over `PATCH`); `PUT`/`PATCH` on the collection path and `POST` on the item path are ignored, so body-ID updates need an override. A resource with `UpdatePath == ""` no-ops on update rather than erroring.
+
+Tokens are `<pkgName>:<module>:<Name>`, where `moduleFromOps` returns the first operation tag that also appears in the spec's root `tags` list, sanitised by `sanitiseModule` (lowercased, non-alphanumerics dropped: `"AI Content"` → `aicontent`), falling back to `index`. Types and enums registered by the type collectors always use `index`.
 
 "Context params" — `{param}` placeholders in the item path other than the trailing ID param (e.g. `{orgName}`) — are injected as required string inputs on the resource so users can provide them.
 
@@ -93,13 +97,19 @@ Both `typeCollector` (V2) and `typeCollectorV3` (V3) handle enums in two places:
 - **Named enums** (`ensureType`): if a definition/component schema has `Enum` values and no `Properties`, it is registered as a `pschema.ComplexTypeSpec` with `Enum: [...]` instead of an object type. The `Type` field is set to the Pulumi equivalent of the OpenAPI type (`pulumiTypeForOAPIType`).
 - **Inline enums** (`convertSchema`): if a property schema has `Enum` values and a non-empty `typeHint` was passed by the caller, a named enum type is registered under `pkgname:index:TypeHint` and the property returns a `$ref` instead of a primitive type. The hint is derived from `ResourceName + PascalCase(propertyName)` (for resource-level properties) or `TypeName + PascalCase(propertyName)` (for nested object properties).
 
-`extractEnumValues` converts `[]*yaml.Node` → `[]pschema.EnumValueSpec`, using the YAML `Tag` field (`!!int`, `!!float`, `!!bool`, default `!!str`) to preserve native value types. Empty-string values are skipped — they produce an unnamed Go constant that collides with the type name during SDK generation.
+`extractEnumValues` converts `[]*yaml.Node` → `[]pschema.EnumValueSpec`, using the YAML `Tag` field (`!!int`, `!!float`, `!!bool`, default `!!str`) to preserve native value types. Empty-string values and `!!null` values are skipped — an empty string produces an unnamed Go constant that collides with the type name during SDK generation, and null has no meaningful typed constant.
 
 ### Runtime dispatch (`pkg/runtime/`)
 
-`runtime.Build()` returns a `p.Provider` struct (function-field based) keyed by Pulumi token. `tokenFromURN` extracts the token from the full URN for routing.
+`runtime.Build(pkgName, version, result, cfg, pollingEnabled, polling, hooks)` returns a `p.Provider` struct (function-field based) keyed by Pulumi token. `tokenFromURN` extracts the token from the full URN for routing.
+
+`hooks` is a `map[token]ResourceHooks` (`pkg/runtime/hooks.go`). Every dispatch function checks its hook first and only falls through to the built-in handler when the field is nil, so overrides can replace a single operation. `provider.go`'s `buildHooks` populates the map from the public `Overrides`, applying `Overrides["*"]` as a per-field fallback.
 
 `substituteAllParams` in `crud.go` replaces all `{param}` placeholders in a URL path: the resource ID first, then any remaining placeholders from the inputs/state map. This is how context params like `{orgName}` get filled in at operation time.
+
+`extractID` pulls the resource ID out of the create response, trying `IDField`, then `IDPathParam`, then `"id"`, with dot notation for nested lookups (`metadata.name`). It searches the **raw API JSON**, so keys are original spec names, not the camelCased Pulumi ones — a response of `{"org_id": …}` will not match an `IDField` of `orgId`, and create fails with `could not extract ID from response`. `IDField` defaults to `"id"` when the read/create response schema declares it, otherwise to `IDPathParam`.
+
+When polling is enabled (default), create polls the read endpoint until the resource exists and then re-reads for state, and delete polls until the read 404s. `ResolvePollingConfig` fills zero values with 5 min timeout / 1 s initial / 30 s max / ×1.5.
 
 ### infer integration (`provider.go`)
 
@@ -109,7 +119,7 @@ Both `typeCollector` (V2) and `typeCollectorV3` (V3) handle enums in two places:
 
 `parameterizedProvider` holds a mutex-protected `*paramState` (nil until `Parameterize` fires). All provider function methods (`getSchema`, `configure`, `check`, `create`, etc.) call `getState()` first and delegate to `paramState.inner`. This avoids any infer dependency for the parameterized path — the provider is wired directly as a `p.Provider` struct.
 
-`paramBlob` (JSON: `{"specURL":"…","baseURL":"…"}`) is the round-trip value embedded in `PackageSpec.Parameterization.Parameter`. `baseURL` is only populated when `--base-url` was explicitly supplied; an empty value means "re-derive from spec on next Parameterize".
+`paramBlob` (JSON: `{"spec":"…","baseURL":"…"}`) is the round-trip value embedded in `PackageSpec.Parameterization.Parameter`. `baseURL` is only populated when `--base-url` was explicitly supplied; an empty value means "re-derive from spec on next Parameterize".
 
 `spec.BaseURL(doc)` is the exported counterpart to the internal `extractBaseURLV2`/`extractBaseURLV3` helpers. It returns empty string when the spec has no declared server address, rather than defaulting to `localhost`. Used by the parameterized path to decide whether a `--base-url` flag is required.
 
@@ -119,13 +129,17 @@ Both `typeCollector` (V2) and `typeCollectorV3` (V3) handle enums in two places:
 - `spec.AuthScheme` — a single security scheme discovered from the spec: kind (`"apiKey"`, `"bearer"`, `"basic"`), config var name, header/query param name
 - `spec.DiscoveryResult` — slice of `ResourceDef` + shared types map + default base URL + `[]AuthScheme`
 - `config.AuthScheme` — runtime mirror of `spec.AuthScheme`; held by `ProviderConfig` to drive `Apply` and `AuthHeaders`
-- `config.ProviderConfig` — thread-safe holder for base URL, scheme values, and optional auth overrides; `Apply` reads config vars named by each scheme; `AuthHeaders` builds the HTTP header map (respects `authHeaderOverride` / `tokenPrefixOverride` when set)
-- `openapi.Options` / `openapi.ResourceOverride` / `openapi.AuthOverride` — public API surface for library provider authors
+- `config.ProviderConfig` — thread-safe holder for base URL, scheme values, and optional auth overrides; `Apply` reads config vars named by each scheme; `AuthHeaders` builds the HTTP header map (respects `authHeaderOverride` / `tokenPrefixOverride` when set). Note `AuthHeaders` only emits **headers**: an `apiKey` scheme with `in: query` is discovered and surfaced as provider config, but nothing appends it to the request, so those calls go out unauthenticated
+- `runtime.ResourceHooks` — per-resource function overrides (`Check`/`Diff`/`Create`/`Read`/`Update`/`Delete`); nil fields fall back to the built-in handler
+- `runtime.PollingConfig` — resolved post-create/post-delete polling parameters
+- `openapi.Options` / `openapi.ResourceOverride` / `openapi.AuthOverride` / `openapi.PollingOptions` — public API surface for library provider authors. `Options` also carries `ExcludeTags` (drop resources by operation tag), `HTTPClient`, `UserAgent` and `DisablePolling`
 - `parameterized.parameterizedProvider` / `parameterized.paramState` — internal types for the parameterized binary; not part of the library API
 
 ### Auth overrides (`openapi.AuthOverride`)
 
 `Options.AuthOverride` is a library-mode-only escape hatch for APIs that deviate from standard bearer auth conventions. It has no effect on the parameterized provider.
+
+It only reaches bearer-style credentials — the `bearerToken` path, an `apiKey` scheme declared on the `Authorization` header, and the no-schemes fallback. An `apiKey` scheme that names its own header is already sent on that header verbatim, so a spec declaring `apiKey in: header, name: X-Auth-Token` needs no override.
 
 ```go
 openapi.Options{
@@ -175,6 +189,10 @@ Resources exposed:
 | `POST /organisations`, `GET/PATCH/DELETE /organisations/:organisationId` | — | Organisation (name) |
 | `POST /organisations/:organisationId/teams`, `GET/PATCH/DELETE /organisations/:organisationId/teams/:teamId` | `organisationId` | Team (name) |
 | `POST /organisations/:organisationId/teams/:teamId/members`, `GET/DELETE /organisations/:organisationId/teams/:teamId/members/:memberId` | `organisationId`, `teamId` | Member (userId) |
+| `POST /organisations/:organisationId/invites`, `GET/DELETE /organisations/:organisationId/invites/:inviteId` | `organisationId` | Invite (email); tagged `invites` and bearer-guarded |
+| `POST /offices`, `GET/DELETE /offices/:officeId` | — | Office (name, location) — **deliberately absent from the OpenAPI spec**; it backs the hand-written `infer` resource in `code-provider/provider/main.go`, so it exercises `WithResources` alongside spec-derived resources |
+
+The API requires `Authorization: bearer test-bearer-token` on guarded routes, and exposes `GET /debug/last-user-agent`, which both suites assert against to prove the `UserAgent` option reaches outbound requests.
 
 ### Code-provider tests
 
@@ -216,15 +234,19 @@ What `make test-parameterized-provider` does:
 4. Runs `pulumi install` to install the generated SDK
 5. Runs `pulumi up` / `pulumi destroy` and removes the stack
 
-### Running both suites
+`make test-parameterized-provider-from-file` runs the same flow against a downloaded copy of the spec (`pulumi package add openapi-provider ../openapi.json`), covering the local-file path through `spec.LoadSpec`.
+
+### Running all three suites
 
 ```bash
 # In one terminal — start the API
 cd integration-tests && make run-api
 
-# In another terminal — run both suites in sequence
+# In another terminal — run every suite in sequence
 cd integration-tests && make test
 ```
+
+`make test` runs `test-code-provider`, `test-parameterized-provider` and `test-parameterized-provider-from-file`.
 
 ### Shared API targets
 
