@@ -78,10 +78,20 @@ that the value can't be expressed and document it for users.
 ## Changing a property does nothing / Pulumi replaces instead of updating
 
 The resource has no update endpoint (`UpdatePath == ""`), so `update` returns the inputs
-unchanged without calling the API. Discovery only accepts `PUT`/`PATCH` on the item path;
-`PUT /things` (body ID) and `POST /things/{id}` are ignored. Fix with
-`ResourceOverride{UpdatePath, UpdateMethod}`, or an `Update` hook when the shape is stranger
-than a path swap. The preflight harness prints `CANDIDATE` lines for exactly these cases.
+unchanged without calling the API — and because the built-in diff never asks for a
+replacement, `pulumi up` reports a successful update that never reached the API. Discovery
+only accepts `PUT`/`PATCH` on the item path; `PUT /things` (body ID) and `POST /things/{id}`
+are ignored. The preflight harness prints `CANDIDATE` lines for exactly these cases.
+
+Fixes, in order of preference:
+
+- The endpoint takes the ID in the URL → `ResourceOverride{UpdatePath, UpdateMethod}`.
+- The endpoint takes the ID in the body → an `Update` hook. A path override is not enough:
+  `id` is stripped from the input schema during discovery, so the generated body would carry
+  no ID, and APIs that treat a PUT without an ID as a create will silently duplicate the
+  resource.
+- Updates aren't expressible at all → a `Diff` hook that forces replacement, so Pulumi
+  routes changes through delete/create instead of reporting a no-op update.
 
 ## `pulumi up` shows a diff on every run
 

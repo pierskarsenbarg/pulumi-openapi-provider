@@ -56,16 +56,24 @@ Applied after discovery; empty fields keep the convention-derived value.
 
 One example per reason:
 
-**Update lives on the collection (body-ID update).** Discovery only looks for `PUT`/`PATCH`
-on the item path, so `PUT /widgets` is invisible. Point update at the item path if the API
-also accepts it there, or at the collection path if the ID travels in the body (the ID is
-substituted into `{...}` placeholders, and inputs are sent as the JSON body either way):
+**Update lives somewhere discovery doesn't look.** Discovery only accepts `PUT`/`PATCH` on
+the item path, so `PUT /widgets` and `POST /widgets/{widgetId}` are both invisible. A path
+override fixes this **only when the endpoint takes the ID in the URL**, because the ID is
+substituted into `{...}` placeholders from `req.ID`:
 
 ```go
 Overrides: map[string]openapi.ResourceOverride{
     "Widgets": {UpdatePath: "/widgets/{widgetId}", UpdateMethod: "PUT"},
 }
 ```
+
+A genuine body-ID update (`PUT /widgets` with `{"id": …, …}`) is **not** fixable this way:
+the request body is built from the resource's inputs, and `id` was stripped from the input
+schema during discovery because Pulumi reserves it. The override would issue a PUT with no
+ID in the body — which on many APIs creates a duplicate rather than erroring. Use an
+`Update` hook that re-injects `req.ID` into the payload, or, when the API's update semantics
+don't fit Pulumi at all, a `Diff` hook that forces replacement so changes go through
+create/delete.
 
 **Create response uses a different ID key.** `{"org_id": "..."}` with an `IDField` of
 `orgId` fails at create. Use the API's own name:
@@ -138,6 +146,15 @@ Reach for a hook when a path/field override can't express the behaviour:
 
 Note the asymmetry: `Skip`/paths/IDs are consumed during discovery, hooks are wired into the
 dispatch table by token afterwards. Both live in the same map entry.
+
+**Hooks don't receive provider config.** A hook signature carries only the Pulumi request —
+there is no handle on the resolved base URL or credentials, which live in the internal
+`config.ProviderConfig`. A hook that needs to call the API has to close over its own client
+and its own configuration (environment variables, a value captured in `main`), and the same
+applies to hand-written `infer` resources added with `WithResources`: `openapi.ProviderBuilder`
+exposes no `WithConfig`, so those resources can't read the provider's config variables
+either. Plan for hand-written resources to carry their own endpoint and credential source,
+and say so when recommending a mixed provider.
 
 ## 4. The wildcard key
 

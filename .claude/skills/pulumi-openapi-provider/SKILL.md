@@ -69,7 +69,7 @@ Traps that apply: <from the checklist below>
 Walk these; each one has burned a real build. Details and fixes in the references.
 
 1. **No `POST /things` for a `GET /things/{id}`** → no resource at all. Create is mandatory; read *or* delete must also exist.
-2. **Update lives somewhere other than `PUT|PATCH /things/{id}`** (e.g. `PUT /things` with the ID in the body, or `POST /things/{id}`) → resource is discovered but is **update-free**: Pulumi will replace instead of updating, or silently no-op. Needs `ResourceOverride{UpdatePath, UpdateMethod}` or a `Update` hook → library mode.
+2. **Update lives somewhere other than `PUT|PATCH /things/{id}`** (e.g. `PUT /things` with the ID in the body, or `POST /things/{id}`) → the resource is discovered **update-free**, and changes silently no-op: `update` returns the inputs without calling the API and `pulumi up` still reports success. A path override works when the endpoint takes the ID in the URL; a true body-ID update needs an `Update` hook, because `id` is stripped from the inputs and would be missing from the request body. Either way → library mode.
 3. **Create response doesn't return the ID under the expected key** → every create fails at runtime with `could not extract ID from response (looked for field "X")`. Especially common with snake_case (`org_id`) or nested IDs (`metadata.name`). Needs `ResourceOverride{IDField}` → library mode. This one is invisible until `pulumi up`, so call it out in preflight.
 4. **Security scheme is `apiKey` `in: query`** → a config variable is generated but **never sent**; every call goes out unauthenticated. There is no override for this; see `references/overrides-and-auth.md`.
 5. **The credential doesn't go where the spec says.** An `apiKey in: header` scheme is already sent on exactly the header the spec names, so a declared `X-Auth-Token` needs no override — don't reach for `AuthOverride` on the header name alone. `AuthOverride` (library mode) is for bearer-style credentials: the API wants `token <x>` or a raw token rather than the default `bearer <x>`, the spec puts the credential on `Authorization` but the API reads a different header, or the spec declares no scheme at all. The harness prints `config var "x" -> header "y"` per scheme; check it before deciding.
@@ -148,7 +148,7 @@ if err := builder.
 }
 ```
 
-Full field table, hook signatures, and one focused example per override reason: `references/overrides-and-auth.md`.
+Full field table, hook signatures, and one focused example per override reason: `references/overrides-and-auth.md`. One constraint worth designing around up front: hand-written resources and hooks can't read the provider's config variables — there's no `WithConfig` on the builder — so anything added via `WithResources` needs its own endpoint and credential source.
 
 Then schema and SDKs:
 
