@@ -258,6 +258,19 @@ openapi.Options{
 | `IDPathParam`                 | Override the path parameter name used as the resource ID         |
 | `IDField`                     | Override the JSON response field used to extract the resource ID |
 
+## Claude Code skill
+
+This repository ships a [Claude Code skill](.claude/skills/pulumi-openapi-provider) for building providers with this library. It teaches an agent the discovery conventions, the override escape hatches, and — most usefully — how to predict which endpoints in a spec will *not* become resources before generating anything.
+
+Working in this repository it needs no installation; Claude Code picks it up automatically. To use it elsewhere, copy the directory into `~/.claude/skills/`. See the [skill README](.claude/skills/pulumi-openapi-provider/README.md) for details.
+
+It also bundles a standalone preflight tool that is handy on its own — it reports what a provider built from a given spec would look like, without generating an SDK:
+
+```bash
+cd .claude/skills/pulumi-openapi-provider/scripts/preflight
+go run . https://api.example.com/openapi.json
+```
+
 ## Examples
 
 - [`examples/petstore`](examples/petstore) — provider built from the [Swagger Petstore](https://petstore.swagger.io) spec (Swagger 2.0)
