@@ -70,10 +70,17 @@ Overrides: map[string]openapi.ResourceOverride{
 A genuine body-ID update (`PUT /widgets` with `{"id": …, …}`) is **not** fixable this way:
 the request body is built from the resource's inputs, and `id` was stripped from the input
 schema during discovery because Pulumi reserves it. The override would issue a PUT with no
-ID in the body — which on many APIs creates a duplicate rather than erroring. Use an
-`Update` hook that re-injects `req.ID` into the payload, or, when the API's update semantics
-don't fit Pulumi at all, a `Diff` hook that forces replacement so changes go through
-create/delete.
+ID in the body — which on many APIs creates a duplicate rather than erroring. Three ways out,
+in rough order of preference:
+
+- **A `RoundTripper` on `Options.HTTPClient`** that rewrites just that one request: override
+  `UpdatePath` to the item path so the ID reaches the URL, then in the transport rewrite
+  `PUT /widgets/{id}` back to `PUT /widgets` with the ID injected into the body. This keeps
+  the provider's own base URL and auth headers, which the hooks do not get.
+- **An `Update` hook** that re-injects `req.ID` into the payload — simplest to read, but the
+  hook has to bring its own HTTP client and credentials (see below).
+- **A `Diff` hook that forces replacement**, when the API's update semantics don't fit Pulumi
+  at all, so changes go through delete/create instead.
 
 **Create response uses a different ID key.** `{"org_id": "..."}` with an `IDField` of
 `orgId` fails at create. Use the API's own name:
