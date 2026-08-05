@@ -10,6 +10,9 @@ coverage.txt
 # macOS
 .DS_Store
 
+# Skill eval run outputs (test prompts and fixtures are tracked; run results are not)
+.claude/skills/*-workspace/iteration-*
+
 # Generated schemas and SDKs
 examples/**/schema.json
 examples/**/sdk

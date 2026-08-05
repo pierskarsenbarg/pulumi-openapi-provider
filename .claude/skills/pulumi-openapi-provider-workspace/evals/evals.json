@@ -1,0 +1,72 @@
+{
+  "skill_name": "pulumi-openapi-provider",
+  "notes": "Each eval checks whether the trap is caught BEFORE code/SDK generation, not whether a provider can be built at all. Fixtures live in ../fixtures and are offline copies (the sandbox blocks petstore.swagger.io).",
+  "evals": [
+    {
+      "id": 0,
+      "name": "petstore-parameterized-mode",
+      "prompt": "I've got the Swagger Petstore spec saved at .claude/skills/pulumi-openapi-provider-workspace/fixtures/petstore.json. Can you get me a Pulumi provider for it? I just want to manage pets from a Pulumi TypeScript program, nothing fancy.",
+      "expected_output": "Chooses parameterized mode (pulumi plugin install + pulumi package add), runs preflight first, reports Pet/StoreOrder/User, flags that Pet has no update endpoint and that config vars are api_key/bearerToken/baseUrl.",
+      "assertions": [
+        "Recommends parameterized mode (pulumi package add openapi-provider), not writing a Go main.go",
+        "Runs or describes running discovery/preflight before generating anything",
+        "Reports the three discovered resources: Pet, StoreOrder, User",
+        "Flags that Pet has no update endpoint (PUT /pet is on the collection, POST /pet/{petId} is ignored)",
+        "Names the provider config variables the user must set (baseUrl plus api_key and/or bearerToken)"
+      ],
+      "files": ["fixtures/petstore.json"]
+    },
+    {
+      "id": 1,
+      "name": "custom-resources-library-mode",
+      "prompt": "We're building an internal Pulumi provider for our pet-adoption service. The REST API spec is at .claude/skills/pulumi-openapi-provider-workspace/fixtures/petstore.json, but we also need a couple of resources that aren't in the spec at all (an Office resource that hits a different internal endpoint). Can you set that up?",
+      "expected_output": "Chooses library mode, shows NewProviderBuilder + WithResources(infer.Resource[...]), points at the integration-tests provider as the reference implementation.",
+      "assertions": [
+        "Chooses library mode and explains why (custom resources require WithResources, unavailable in parameterized mode)",
+        "Shows NewProviderBuilder(...).WithResources(...) usage with an infer resource",
+        "Mentions building the binary as pulumi-resource-<name> and the get-schema/gen-sdk commands",
+        "Still preflights the spec and reports the discovered resources"
+      ],
+      "files": ["fixtures/petstore.json"]
+    },
+    {
+      "id": 2,
+      "name": "body-id-update-and-id-extraction",
+      "prompt": "Here's our API spec: .claude/skills/pulumi-openapi-provider-workspace/fixtures/orgs-api.json. I want a Pulumi provider for it so we can manage orgs, teams and widgets as infrastructure. Widgets definitely need to be updatable in place — people change display names all the time.",
+      "expected_output": "Before generating: flags that PUT /widgets is a body-ID update discovery ignores (needs ResourceOverride{UpdatePath,UpdateMethod} => library mode), and ideally that Orgs' create will fail ID extraction because the response field is org_id.",
+      "assertions": [
+        "Flags that Widgets has no discovered update endpoint and that PUT /widgets is ignored because it is not on the item path",
+        "Prescribes ResourceOverride{UpdatePath, UpdateMethod} and therefore library mode, before generating an SDK",
+        "Flags the Orgs ID-extraction problem (response field org_id vs expected orgId) or otherwise catches that IDField needs overriding",
+        "Notes the spec declares no servers, so baseUrl must be supplied"
+      ],
+      "files": ["fixtures/orgs-api.json"]
+    },
+    {
+      "id": 3,
+      "name": "auth-header-not-authorization",
+      "prompt": "Trying to build a Pulumi provider from .claude/skills/pulumi-openapi-provider-workspace/fixtures/orgs-api.json. Heads up: our API doesn't use the Authorization header, the token goes in X-Auth-Token. Do I need to do anything special for that, and what will people have to run to configure it?",
+      "expected_output": "Correctly determines that AuthOverride is NOT needed because the spec declares X-Auth-Token as an apiKey header scheme (discovery sends it already), and reports the awkward config var name x-Auth-Token. Bonus: flags the query-param apiKey scheme that is never sent.",
+      "assertions": [
+        "Concludes AuthOverride is not required for X-Auth-Token because the spec declares it as an apiKey header scheme",
+        "Gives the exact config var name x-Auth-Token (derived from the scheme key, first letter lowercased)",
+        "Does not incorrectly force library mode solely for the X-Auth-Token header",
+        "Flags that the second scheme (apiKey in query) is discovered but never sent at runtime"
+      ],
+      "files": ["fixtures/orgs-api.json"]
+    },
+    {
+      "id": 4,
+      "name": "empty-string-enum-dropped",
+      "prompt": "Generating a Pulumi SDK from .claude/skills/pulumi-openapi-provider-workspace/fixtures/orgs-api.json. The team visibility field matters a lot to us — it's how we mark internal vs public teams, and unset is a real state. Anything I should know before we ship this?",
+      "expected_output": "Proactively flags that the empty-string value in Team.visibility is dropped from the generated enum (and the null in Size), so 'unset' cannot be expressed, and recommends not modelling it as an enum.",
+      "assertions": [
+        "Flags that the empty-string enum value in visibility is dropped from the generated SDK",
+        "Explains why (empty string produces an unnamed constant colliding with the type name)",
+        "Connects the drop to the user's stated need (unset is a real state) and recommends a concrete course of action",
+        "Also notes the null value dropped from the Size enum"
+      ],
+      "files": ["fixtures/orgs-api.json"]
+    }
+  ]
+}

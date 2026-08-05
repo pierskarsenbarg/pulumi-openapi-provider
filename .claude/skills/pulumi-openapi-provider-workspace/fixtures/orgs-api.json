@@ -1,0 +1,42 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Trap API!! v2", "version": "2024-05-01"},
+  "paths": {
+    "/orgs": {
+      "post": {"requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Org"}}}}, "responses": {"201": {"description": "c", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Org"}}}}}}
+    },
+    "/orgs/{orgId}": {
+      "get": {"responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Org"}}}}}},
+      "delete": {"responses": {"204": {"description": "gone"}}}
+    },
+    "/orgs/{orgId}/teams": {
+      "post": {"requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}, "responses": {"201": {"description": "c", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}}}
+    },
+    "/orgs/{orgId}/teams/{teamId}": {
+      "get": {"responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}}},
+      "patch": {"requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}, "responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Team"}}}}}},
+      "delete": {"responses": {"204": {"description": "gone"}}}
+    },
+    "/widgets": {
+      "post": {"requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}, "responses": {"201": {"description": "c", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}},
+      "put": {"requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}, "responses": {"200": {"description": "ok"}}}
+    },
+    "/widgets/{widgetId}": {
+      "get": {"responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}}}},
+      "delete": {"responses": {"204": {"description": "gone"}}}
+    },
+    "/reports/generate": {"post": {"responses": {"200": {"description": "ok"}}}}
+  },
+  "components": {
+    "securitySchemes": {
+      "X-Auth-Token": {"type": "apiKey", "in": "header", "name": "X-Auth-Token", "description": "Account token"},
+      "queryKey": {"type": "apiKey", "in": "query", "name": "api_key"}
+    },
+    "schemas": {
+      "Org": {"type": "object", "required": ["name"], "properties": {"org_id": {"type": "string"}, "name": {"type": "string"}}},
+      "Team": {"type": "object", "required": ["name"], "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "visibility": {"type": "string", "enum": ["", "public", "private"]}}},
+      "Widget": {"type": "object", "properties": {"widget_id": {"type": "string"}, "display_name": {"type": "string"}, "size": {"$ref": "#/components/schemas/Size"}, "meta": {"type": "object"}, "grid": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}}}},
+      "Size": {"type": "string", "enum": ["small", "large", null]}
+    }
+  }
+}
