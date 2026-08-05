@@ -181,4 +181,4 @@ Mixed cases are fine and common: build the spec-derived provider for the CRUD-sh
 
 ## Where the truth lives
 
-The README and CLAUDE.md are useful but drift from the code. When they disagree with `pkg/spec/resource.go`, `pkg/runtime/crud.go`, or `pkg/config/config.go`, the code wins — and the references in this skill were written from the code and checked by running it. Known drift is flagged inline in `references/discovery-rules.md`. If discovery logic changes, update these references in the same commit, or they become the next source of drift.
+The README, CLAUDE.md and these references were reconciled against the code and checked by running it, so they should agree today. `pkg/spec/resource.go`, `pkg/runtime/crud.go` and `pkg/config/config.go` are still authoritative: if prose and code disagree, the code wins, and the correction belongs in all three documents in the same commit — see `references/discovery-rules.md` §12. Prefer the preflight harness over any document when a specific spec is in front of you; it runs the real discovery functions and cannot go stale.

@@ -284,18 +284,21 @@ Predict:
   is searched for `orgId` and fails. Fix: `ResourceOverride{"Orgs": {IDField: "org_id"}}`.
 - No `servers` → `baseUrl` empty, so `--base-url` / `Options.BaseURL` is mandatory.
 
-## 12. Known documentation drift
+## 12. Keeping this in sync with the code
 
-The README and CLAUDE.md are behind the code in these places — trust the code:
+The README and CLAUDE.md were reconciled against the code when this skill was written —
+tag-derived token modules, the `spec` key in the parameterization blob, the deferred base-URL
+failure, the lowercase `bearer` prefix, `null` enum drops, the query-apiKey gap, and the
+previously undocumented `ExcludeTags` / polling / `UserAgent` / hook options are all
+documented there now.
 
-- **Tokens**: both suggest `<pkg>:index:<Name>`; modules are actually tag-derived when the
-  spec declares root tags.
-- **Parameterization blob**: CLAUDE.md says `{"specURL": …}`; the JSON key is `spec`.
-- **Base URL**: the README says `pulumi package add` "exits with a clear error" when no base
-  URL is available; it succeeds, and the failure surfaces on the first API call.
-- **Bearer prefix**: the README shows `Authorization: Bearer <value>`; the default prefix is
-  lowercase `bearer`.
-- **Undocumented options**: `ExcludeTags`, `PollingOptions`/`DisablePolling`, `UserAgent`,
-  and the `Check`/`Diff`/`Create`/`Read`/`Update`/`Delete` function hooks on
-  `ResourceOverride` are all real and absent from the README's table.
-- **Enum drops**: the README mentions empty strings; `null` values are dropped too.
+That reconciliation is a snapshot, not a guarantee. `pkg/spec/resource.go`,
+`pkg/runtime/crud.go` and `pkg/config/config.go` remain authoritative: when prose and code
+disagree, the code wins, and the fix belongs in all three places (README, CLAUDE.md, and
+these references) in the same commit. If you find a fresh discrepancy while using this skill,
+say so explicitly rather than quietly working around it — an undetected drift here becomes
+wrong advice at scale.
+
+The cheapest guard is the harness in `scripts/preflight`: it calls the real discovery
+functions, so any behaviour change shows up in its output immediately, without anyone having
+to notice that a document went stale.
