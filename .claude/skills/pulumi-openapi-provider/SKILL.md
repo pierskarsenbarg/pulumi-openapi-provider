@@ -15,6 +15,7 @@ That is the thing to internalise: this library discovers resources by **path sha
 Does the job need ANY of:
   - hand-written Pulumi resources alongside the spec-derived ones (WithResources)
   - per-resource overrides (ResourceOverride: Skip / Token / paths / IDField / Check / Create hooks)
+  - type token renames (TypeOverrides: Token, keyed by spec schema name)
   - non-standard auth (AuthOverride: header name or token prefix)
   - a custom *http.Client (mTLS, kubeconfig transport, proxies)
   - excluding operations by tag (ExcludeTags), or polling tuning
@@ -23,7 +24,7 @@ Does the job need ANY of:
 → NO:  parameterized mode. No Go code at all. See "Parameterized workflow".
 ```
 
-If unsure, start parameterized — it costs one command. Switch to library mode the moment preflight predicts a gap that only an override can close, since the parameterized binary ignores `Overrides` and `AuthOverride` entirely (it calls `spec.Discover(doc, pkgName, nil, nil)`).
+If unsure, start parameterized — it costs one command. Switch to library mode the moment preflight predicts a gap that only an override can close, since the parameterized binary ignores `Overrides` and `AuthOverride` entirely (it calls `spec.Discover(doc, pkgName, nil, nil, nil)`).
 
 ## Step 2 — Preflight the spec (do this before generating anything)
 

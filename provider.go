@@ -171,7 +171,7 @@ func GetSchema(name, version string, opts Options) (string, error) {
 	}
 
 	overrides := convertOverrides(opts.Overrides)
-	result, err := spec.Discover(doc, name, overrides, opts.ExcludeTags)
+	result, err := spec.Discover(doc, name, overrides, convertTypeOverrides(opts.TypeOverrides), opts.ExcludeTags)
 	if err != nil {
 		return "", fmt.Errorf("discovering resources: %w", err)
 	}
@@ -188,7 +188,7 @@ func buildDynamicProvider(name, version string, opts Options) (p.Provider, error
 	}
 
 	overrides := convertOverrides(opts.Overrides)
-	result, err := spec.Discover(doc, name, overrides, opts.ExcludeTags)
+	result, err := spec.Discover(doc, name, overrides, convertTypeOverrides(opts.TypeOverrides), opts.ExcludeTags)
 	if err != nil {
 		return p.Provider{}, fmt.Errorf("discovering resources: %w", err)
 	}
@@ -259,6 +259,17 @@ func buildHooks(resources []spec.ResourceDef, overrides map[string]ResourceOverr
 		}
 	}
 	return hooks
+}
+
+func convertTypeOverrides(in map[string]TypeOverride) map[string]spec.TypeOverride {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]spec.TypeOverride, len(in))
+	for k, v := range in {
+		out[k] = spec.TypeOverride{Token: v.Token}
+	}
+	return out
 }
 
 func convertOverrides(in map[string]ResourceOverride) map[string]spec.ResourceOverride {

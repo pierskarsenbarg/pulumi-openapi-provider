@@ -132,8 +132,14 @@ When polling is enabled (default), create polls the read endpoint until the reso
 - `config.ProviderConfig` — thread-safe holder for base URL, scheme values, and optional auth overrides; `Apply` reads config vars named by each scheme; `AuthHeaders` builds the HTTP header map (respects `authHeaderOverride` / `tokenPrefixOverride` when set). Note `AuthHeaders` only emits **headers**: an `apiKey` scheme with `in: query` is discovered and surfaced as provider config, but nothing appends it to the request, so those calls go out unauthenticated
 - `runtime.ResourceHooks` — per-resource function overrides (`Check`/`Diff`/`Create`/`Read`/`Update`/`Delete`); nil fields fall back to the built-in handler
 - `runtime.PollingConfig` — resolved post-create/post-delete polling parameters
-- `openapi.Options` / `openapi.ResourceOverride` / `openapi.AuthOverride` / `openapi.PollingOptions` — public API surface for library provider authors. `Options` also carries `ExcludeTags` (drop resources by operation tag), `HTTPClient`, `UserAgent` and `DisablePolling`
+- `openapi.Options` / `openapi.ResourceOverride` / `openapi.TypeOverride` / `openapi.AuthOverride` / `openapi.PollingOptions` — public API surface for library provider authors. `Options` also carries `ExcludeTags` (drop resources by operation tag), `HTTPClient`, `UserAgent` and `DisablePolling`
 - `parameterized.parameterizedProvider` / `parameterized.paramState` — internal types for the parameterized binary; not part of the library API
+
+### Type overrides (`openapi.TypeOverride`)
+
+`Options.TypeOverrides` is library-mode only (the parameterized provider passes nil). Keys are **spec** definition / component-schema names (`Pet`), not the PascalCased ones. The only field is `Token`, which replaces the default `<pkg>:index:<Name>` for that named type or named enum; inline enums are not overridable.
+
+`validateTypeOverrides` runs before collection and errors if a token is not `<provider name>:module:Name`, a key names no schema in the spec, or an overridden token collides with another schema's final token. `typeCollector`/`typeCollectorV3` build every named-type token and `$ref` through `tokenFor`, so definitions and references stay in sync.
 
 ### Auth overrides (`openapi.AuthOverride`)
 

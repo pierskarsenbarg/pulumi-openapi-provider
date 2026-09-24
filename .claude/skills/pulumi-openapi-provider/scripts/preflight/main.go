@@ -42,7 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	result, err := spec.Discover(doc, pkgName, nil, nil)
+	result, err := spec.Discover(doc, pkgName, nil, nil, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "discovering resources: %v\n", err)
 		os.Exit(1)
