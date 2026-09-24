@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	p "github.com/pulumi/pulumi-go-provider"
 
@@ -22,11 +23,20 @@ func Build(pkgName, version string, result spec.DiscoveryResult, cfg *config.Pro
 		byToken[res.Token] = res
 	}
 
-	schemaJSON, _ := spec.BuildSchema(pkgName, version, result)
+	schemaJSON, schemaErr := spec.BuildSchema(pkgName, version, result)
+	var warnOnce sync.Once
 	client := &crudClient{cfg: cfg, pollingEnabled: pollingEnabled, polling: polling}
 
 	return p.Provider{
-		GetSchema: func(_ context.Context, _ p.GetSchemaRequest) (p.GetSchemaResponse, error) {
+		GetSchema: func(ctx context.Context, _ p.GetSchemaRequest) (p.GetSchemaResponse, error) {
+			warnOnce.Do(func() {
+				for _, w := range result.Warnings {
+					p.GetLogger(ctx).Warning(w)
+				}
+			})
+			if schemaErr != nil {
+				return p.GetSchemaResponse{}, schemaErr
+			}
 			return p.GetSchemaResponse{Schema: schemaJSON}, nil
 		},
 

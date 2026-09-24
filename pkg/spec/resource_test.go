@@ -568,15 +568,13 @@ func TestDiscover_Override_Skip(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
-		"Widget": {Skip: true},
+		"Widgets": {Skip: true},
 	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, r := range result.Resources {
-		if r.Name == "Widget" {
-			t.Error("Widget should have been skipped")
-		}
+	if len(result.Resources) != 0 {
+		t.Errorf("Widgets should have been skipped, got %d resources", len(result.Resources))
 	}
 }
 

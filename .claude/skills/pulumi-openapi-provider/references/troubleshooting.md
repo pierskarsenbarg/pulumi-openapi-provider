@@ -10,7 +10,7 @@ spec. Most of these are visible in its output in seconds, and it needs no creden
 
 ## A resource is missing from the generated SDK
 
-Discovery drops groups silently, so "missing" is normal output, not a bug. In order of
+Discovery drops groups without an error, so "missing" is normal output, not a bug. Only groups that have a create operation but no read or delete are logged (as a warning from `GetSchema`); everything else is silent. In order of
 likelihood:
 
 1. **No `POST` on the collection path.** Create is mandatory. `GET /things/{id}` alone
