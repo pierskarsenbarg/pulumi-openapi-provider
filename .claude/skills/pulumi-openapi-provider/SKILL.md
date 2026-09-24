@@ -15,7 +15,7 @@ That is the thing to internalise: this library discovers resources by **path sha
 Does the job need ANY of:
   - hand-written Pulumi resources alongside the spec-derived ones (WithResources)
   - per-resource overrides (ResourceOverride: Skip / Token / paths / IDField / Check / Create hooks)
-  - type token renames (TypeOverrides: Token, keyed by spec schema name)
+  - type token renames (TypeOverrides: Token, keyed by spec schema name or inline enum name)
   - non-standard auth (AuthOverride: header name or token prefix)
   - a custom *http.Client (mTLS, kubeconfig transport, proxies)
   - excluding operations by tag (ExcludeTags), or polling tuning

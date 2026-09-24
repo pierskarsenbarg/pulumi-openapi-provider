@@ -139,9 +139,9 @@ When polling is enabled (default), create polls the read endpoint until the reso
 
 ### Type overrides (`openapi.TypeOverride`)
 
-`Options.TypeOverrides` is library-mode only (the parameterized provider passes nil). Keys are **spec** definition / component-schema names (`Pet`), not the PascalCased ones. The only field is `Token`, which replaces the default `<pkg>:index:<Name>` for that named type or named enum; inline enums are not overridable.
+`Options.TypeOverrides` is library-mode only (the parameterized provider passes nil). Keys are either **spec** definition / component-schema names (`Pet`, not the PascalCased form) or **inline enum** names, which are the generated `ResourceName+PropertyName` / `SchemaName+PropertyName` hints (`ClipV2ResourceSceneType`, i.e. the last segment of the enum's default token in the generated schema). The two share one key space. The only field is `Token`, which replaces the default `<pkg>:index:<Name>`.
 
-`validateTypeOverrides` runs before collection and errors if a token is not `<provider name>:module:Name`, a key names no schema in the spec, or an overridden token collides with another schema's final token. `typeCollector`/`typeCollectorV3` build every named-type token and `$ref` through `tokenFor`, so definitions and references stay in sync.
+`validateTypeOverrides` runs after collection (inline enum names only exist once their resources have been built; the collectors record them in `inlineEnums`) and errors if a token is not `<provider name>:module:Name`, a key names no schema or collected inline enum (so an enum on a `Skip`ped or excluded resource is unknown), or an overridden token collides with another type's final token. `typeCollector`/`typeCollectorV3` build every named-type token and `$ref` through `tokenFor`, and inline enums through `hintToken`, so definitions and references stay in sync.
 
 ### Auth overrides (`openapi.AuthOverride`)
 

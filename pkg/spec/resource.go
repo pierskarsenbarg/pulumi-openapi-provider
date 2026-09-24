@@ -136,19 +136,36 @@ func tokenFor(pkgName string, overrides map[string]TypeOverride, name string) st
 	return fmt.Sprintf("%s:index:%s", pkgName, toPascalCase(name))
 }
 
-// validateTypeOverrides checks override tokens are well-formed "<pkgName>:module:Name",
-// that every key names a schema in the spec, and that no overridden token collides with
-// another schema's final token.
-func validateTypeOverrides(pkgName string, schemaNames []string, overrides map[string]TypeOverride) error {
+// hintToken returns the Pulumi token for an inline enum, honouring any override keyed by its
+// generated name (e.g. "WidgetStatus").
+func hintToken(pkgName string, overrides map[string]TypeOverride, hint string) string {
+	if o, ok := overrides[hint]; ok && o.Token != "" {
+		return o.Token
+	}
+	return fmt.Sprintf("%s:index:%s", pkgName, hint)
+}
+
+// validateTypeOverrides checks override tokens are well-formed "<pkgName>:module:Name", that every
+// key names a schema or an inline enum that was collected, and that no overridden token collides
+// with another type's final token. It runs after collection because inline enum names only exist
+// once the resources that declare them have been built.
+func validateTypeOverrides(
+	pkgName string, schemaNames, inlineEnums []string, overrides map[string]TypeOverride,
+) error {
 	if len(overrides) == 0 {
 		return nil
 	}
-	known := make(map[string]bool, len(schemaNames))
-	owners := make(map[string][]string, len(schemaNames))
+	known := make(map[string]bool, len(schemaNames)+len(inlineEnums))
+	owners := make(map[string][]string, len(schemaNames)+len(inlineEnums))
 	for _, n := range schemaNames {
 		known[n] = true
 		tok := tokenFor(pkgName, overrides, n)
 		owners[tok] = append(owners[tok], n)
+	}
+	for _, n := range inlineEnums {
+		known[n] = true
+		tok := hintToken(pkgName, overrides, n)
+		owners[tok] = append(owners[tok], n+" (inline enum)")
 	}
 
 	keys := make([]string, 0, len(overrides))
@@ -163,14 +180,10 @@ func validateTypeOverrides(pkgName string, schemaNames []string, overrides map[s
 			continue
 		}
 		if !known[k] {
-			return fmt.Errorf("type override %q: no such definition or schema in the spec", k)
+			return fmt.Errorf("type override %q: no such definition, schema or inline enum in the spec", k)
 		}
-		parts := strings.Split(o.Token, ":")
-		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-			return fmt.Errorf("type override %q: token %q must have the form %s:module:Name", k, o.Token, pkgName)
-		}
-		if parts[0] != pkgName {
-			return fmt.Errorf("type override %q: token %q must use the provider name %q as its package", k, o.Token, pkgName)
+		if err := validateToken(pkgName, fmt.Sprintf("type override %q", k), o.Token); err != nil {
+			return err
 		}
 		if names := owners[o.Token]; len(names) > 1 {
 			sort.Strings(names)
@@ -178,6 +191,15 @@ func validateTypeOverrides(pkgName string, schemaNames []string, overrides map[s
 		}
 	}
 	return nil
+}
+
+func sortedKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 type pathGroup struct {
@@ -203,17 +225,14 @@ func discoverV2(
 			defNames = append(defNames, pair.Key)
 		}
 	}
-	if err := validateTypeOverrides(pkgName, defNames, typeOverrides); err != nil {
-		return DiscoveryResult{}, err
-	}
-
 	baseURL := extractBaseURLV2(swagger)
 	rootTags := rootTagSet(swagger.Tags)
 	typeCollector := &typeCollector{
-		pkgName:   pkgName,
-		defs:      swagger.Definitions,
-		overrides: typeOverrides,
-		types:     map[string]pschema.ComplexTypeSpec{},
+		pkgName:     pkgName,
+		defs:        swagger.Definitions,
+		overrides:   typeOverrides,
+		types:       map[string]pschema.ComplexTypeSpec{},
+		inlineEnums: map[string]bool{},
 	}
 
 	groups := groupPaths(swagger)
@@ -250,6 +269,9 @@ func discoverV2(
 	}
 
 	if err := checkResourceTokenCollisions(resources, tokenOverridden); err != nil {
+		return DiscoveryResult{}, err
+	}
+	if err := validateTypeOverrides(pkgName, defNames, sortedKeys(typeCollector.inlineEnums), typeOverrides); err != nil {
 		return DiscoveryResult{}, err
 	}
 
@@ -1035,10 +1057,11 @@ func applyOverride(res *ResourceDef, or ResourceOverride) {
 
 // typeCollector resolves and accumulates shared object types encountered during discovery.
 type typeCollector struct {
-	pkgName   string
-	defs      *v2high.Definitions
-	overrides map[string]TypeOverride
-	types     map[string]pschema.ComplexTypeSpec
+	pkgName     string
+	defs        *v2high.Definitions
+	overrides   map[string]TypeOverride
+	types       map[string]pschema.ComplexTypeSpec
+	inlineEnums map[string]bool
 }
 
 func (tc *typeCollector) tokenFor(name string) string {
@@ -1079,7 +1102,8 @@ func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Def
 
 	// Inline enum: register a named enum type and return a $ref.
 	if len(schema.Enum) > 0 && typeHint != "" {
-		token := fmt.Sprintf("%s:index:%s", tc.pkgName, typeHint)
+		tc.inlineEnums[typeHint] = true
+		token := hintToken(tc.pkgName, tc.overrides, typeHint)
 		if _, exists := tc.types[token]; !exists {
 			tc.types[token] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: pschema.ObjectTypeSpec{
@@ -1090,7 +1114,7 @@ func (tc *typeCollector) convertSchema(schema *highbase.Schema, defs *v2high.Def
 			}
 		}
 		return pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, typeHint)},
+			TypeSpec:    pschema.TypeSpec{Ref: "#/types/" + token},
 			Description: schema.Description,
 		}
 	}
@@ -1242,17 +1266,14 @@ func discoverV3(
 			schemaNames = append(schemaNames, k)
 		}
 	}
-	if err := validateTypeOverrides(pkgName, schemaNames, typeOverrides); err != nil {
-		return DiscoveryResult{}, err
-	}
-
 	baseURL := extractBaseURLV3(d)
 	rootTags := rootTagSet(d.Tags)
 	tc := &typeCollectorV3{
-		pkgName:    pkgName,
-		components: d.Components,
-		overrides:  typeOverrides,
-		types:      map[string]pschema.ComplexTypeSpec{},
+		pkgName:     pkgName,
+		components:  d.Components,
+		overrides:   typeOverrides,
+		types:       map[string]pschema.ComplexTypeSpec{},
+		inlineEnums: map[string]bool{},
 	}
 
 	var pathKeys []string
@@ -1292,6 +1313,9 @@ func discoverV3(
 	}
 
 	if err := checkResourceTokenCollisions(resources, tokenOverridden); err != nil {
+		return DiscoveryResult{}, err
+	}
+	if err := validateTypeOverrides(pkgName, schemaNames, sortedKeys(tc.inlineEnums), typeOverrides); err != nil {
 		return DiscoveryResult{}, err
 	}
 
@@ -1567,10 +1591,11 @@ func extractComponentSchemaName(ref string) string {
 
 // typeCollectorV3 resolves and accumulates OAS3 component schemas as Pulumi types.
 type typeCollectorV3 struct {
-	pkgName    string
-	components *v3high.Components
-	overrides  map[string]TypeOverride
-	types      map[string]pschema.ComplexTypeSpec
+	pkgName     string
+	components  *v3high.Components
+	overrides   map[string]TypeOverride
+	types       map[string]pschema.ComplexTypeSpec
+	inlineEnums map[string]bool
 }
 
 func (tc *typeCollectorV3) tokenFor(name string) string {
@@ -1608,7 +1633,8 @@ func (tc *typeCollectorV3) convertSchema(schema *highbase.Schema, typeHint strin
 
 	// Inline enum: register a named enum type and return a $ref.
 	if len(schema.Enum) > 0 && typeHint != "" {
-		token := fmt.Sprintf("%s:index:%s", tc.pkgName, typeHint)
+		tc.inlineEnums[typeHint] = true
+		token := hintToken(tc.pkgName, tc.overrides, typeHint)
 		if _, exists := tc.types[token]; !exists {
 			tc.types[token] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: pschema.ObjectTypeSpec{
@@ -1619,7 +1645,7 @@ func (tc *typeCollectorV3) convertSchema(schema *highbase.Schema, typeHint strin
 			}
 		}
 		return pschema.PropertySpec{
-			TypeSpec:    pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, typeHint)},
+			TypeSpec:    pschema.TypeSpec{Ref: "#/types/" + token},
 			Description: schema.Description,
 		}
 	}
