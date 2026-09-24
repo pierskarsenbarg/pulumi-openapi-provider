@@ -69,7 +69,7 @@ func discoverWithResourceOverrides(t *testing.T, content string, overrides map[s
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	return spec.Discover(doc, "test", overrides, nil)
+	return spec.Discover(doc, "test", overrides, nil, nil)
 }
 
 func TestResourceTokenOverride_Errors(t *testing.T) {
