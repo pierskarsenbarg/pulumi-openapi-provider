@@ -46,7 +46,7 @@ Applied after discovery; empty fields keep the convention-derived value.
 | Field | Effect |
 | ----- | ------ |
 | `Skip` | Drop the resource entirely (checked before the resource is even built) |
-| `Token` | Replace the Pulumi token, i.e. rename or re-module the resource |
+| `Token` | Replace the Pulumi token, i.e. rename or re-module the resource. Must be `<provider name>:module:Name`; discovery errors on a malformed token or if two resources end up with the same token and one came from an override (a `*` wildcard token therefore only works with a single resource). Collisions between default tokens are not checked. |
 | `CreatePath` / `CreateMethod` | Point create elsewhere / use a method other than POST |
 | `ReadPath` | Point read elsewhere |
 | `UpdatePath` / `UpdateMethod` | Add or move update — the fix for "no update endpoint" |

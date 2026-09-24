@@ -88,6 +88,8 @@ A group is only emitted when `buildResourceV2`/`buildResourceV3` finds a **creat
 
 Tokens are `<pkgName>:<module>:<Name>`, where `moduleFromOps` returns the first operation tag that also appears in the spec's root `tags` list, sanitised by `sanitiseModule` (lowercased, non-alphanumerics dropped: `"AI Content"` → `aicontent`), falling back to `index`. Types and enums registered by the type collectors always use `index`.
 
+A `ResourceOverride.Token` (including on the `"*"` wildcard) is validated in `applyResourceOverrides`: it must be `<pkgName>:module:Name` with the provider name as its package. `checkResourceTokenCollisions` then errors if two resources share a token and at least one got it from an override; collisions between default tokens alone are not reported.
+
 "Context params" — `{param}` placeholders in the item path other than the trailing ID param (e.g. `{orgName}`) — are injected as required string inputs on the resource so users can provide them.
 
 #### Enum support

@@ -144,6 +144,7 @@ func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]Re
 	groups := groupPaths(swagger)
 	excludeSet := buildExcludeSet(excludeTags)
 	var resources []ResourceDef
+	tokenOverridden := map[string]bool{}
 
 	wildcard := overrides["*"]
 	for _, g := range groups {
@@ -162,12 +163,19 @@ func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]Re
 			continue
 		}
 
-		applyOverride(&res, wildcard)
-		if hasOverride {
-			applyOverride(&res, or)
+		overridden, err := applyResourceOverrides(&res, pkgName, name, wildcard, or, hasOverride)
+		if err != nil {
+			return DiscoveryResult{}, err
+		}
+		if overridden {
+			tokenOverridden[res.Name] = true
 		}
 
 		resources = append(resources, res)
+	}
+
+	if err := checkResourceTokenCollisions(resources, tokenOverridden); err != nil {
+		return DiscoveryResult{}, err
 	}
 
 	return DiscoveryResult{
@@ -859,6 +867,67 @@ func groupHasExcludedTagV3(excludeSet map[string]struct{}, g pathGroup, d *v3hig
 	return false
 }
 
+// applyResourceOverrides applies the wildcard then the resource-specific override, validating any
+// token they supply. It reports whether the final token came from an override.
+func applyResourceOverrides(
+	res *ResourceDef, pkgName, name string, wildcard, or ResourceOverride, hasOverride bool,
+) (bool, error) {
+	if wildcard.Token != "" {
+		if err := validateToken(pkgName, `resource override "*"`, wildcard.Token); err != nil {
+			return false, err
+		}
+	}
+	applyOverride(res, wildcard)
+	if hasOverride {
+		if or.Token != "" {
+			if err := validateToken(pkgName, fmt.Sprintf("resource override %q", name), or.Token); err != nil {
+				return false, err
+			}
+		}
+		applyOverride(res, or)
+	}
+	return wildcard.Token != "" || (hasOverride && or.Token != ""), nil
+}
+
+// validateToken checks token has the form "<pkgName>:module:Name". label names the override in the error.
+func validateToken(pkgName, label, token string) error {
+	parts := strings.Split(token, ":")
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return fmt.Errorf("%s: token %q must have the form %s:module:Name", label, token, pkgName)
+	}
+	if parts[0] != pkgName {
+		return fmt.Errorf("%s: token %q must use the provider name %q as its package", label, token, pkgName)
+	}
+	return nil
+}
+
+// checkResourceTokenCollisions errors when resources share a token and at least one of them
+// got that token from an override. Collisions between default tokens alone are not reported.
+func checkResourceTokenCollisions(resources []ResourceDef, tokenOverridden map[string]bool) error {
+	byToken := make(map[string][]string, len(resources))
+	for _, r := range resources {
+		byToken[r.Token] = append(byToken[r.Token], r.Name)
+	}
+	tokens := make([]string, 0, len(byToken))
+	for tok := range byToken {
+		tokens = append(tokens, tok)
+	}
+	sort.Strings(tokens)
+	for _, tok := range tokens {
+		names := byToken[tok]
+		if len(names) < 2 {
+			continue
+		}
+		for _, n := range names {
+			if tokenOverridden[n] {
+				sort.Strings(names)
+				return fmt.Errorf("resources %s all resolve to token %q", strings.Join(names, ", "), tok)
+			}
+		}
+	}
+	return nil
+}
+
 func applyOverride(res *ResourceDef, or ResourceOverride) {
 	if or.Token != "" {
 		res.Token = or.Token
@@ -1103,6 +1172,7 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 
 	wildcard := overrides["*"]
 	var resources []ResourceDef
+	tokenOverridden := map[string]bool{}
 	for _, g := range groups {
 		or, hasOverride := overrides[g.name]
 		if hasOverride && or.Skip {
@@ -1117,11 +1187,18 @@ func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]Re
 		if !ok {
 			continue
 		}
-		applyOverride(&res, wildcard)
-		if hasOverride {
-			applyOverride(&res, or)
+		overridden, err := applyResourceOverrides(&res, pkgName, g.name, wildcard, or, hasOverride)
+		if err != nil {
+			return DiscoveryResult{}, err
+		}
+		if overridden {
+			tokenOverridden[res.Name] = true
 		}
 		resources = append(resources, res)
+	}
+
+	if err := checkResourceTokenCollisions(resources, tokenOverridden); err != nil {
+		return DiscoveryResult{}, err
 	}
 
 	return DiscoveryResult{
