@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"os"
 
 	openapi "github.com/pierskarsenbarg/pulumi-openapi-provider"
 )
@@ -12,6 +13,7 @@ func main() {
 		SpecURL: "https://petstore.swagger.io/v2/swagger.json",
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }

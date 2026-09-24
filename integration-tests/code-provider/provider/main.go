@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	p "github.com/pulumi/pulumi-go-provider"
@@ -102,12 +102,14 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	if err := builder.
 		WithResources(infer.Resource[*Office](&Office{})).
 		Run(ctx); err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
 

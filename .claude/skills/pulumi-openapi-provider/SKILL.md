@@ -111,7 +111,8 @@ package main
 
 import (
     "context"
-    "log"
+    "fmt"
+    "os"
 
     openapi "github.com/pierskarsenbarg/pulumi-openapi-provider"
 )
@@ -121,10 +122,13 @@ func main() {
         SpecURL: "https://api.example.com/openapi.json",
     })
     if err != nil {
-        log.Fatal(err)
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
     }
 }
 ```
+
+Don't use `log.Fatal` in a provider's `main`: the Pulumi SDK discards the standard `log` package's output, so the process would exit 1 with no message. Write the error to `os.Stderr` and exit instead.
 
 With overrides and metadata, use the builder (it mirrors `infer.ProviderBuilder`, so `WithDescription`, `WithHomepage`, `WithLicense`, `WithResources`, `WithComponents`, `WithFunctions` all chain):
 
@@ -139,13 +143,15 @@ builder, err := openapi.NewProviderBuilder("myprovider", "0.1.0", openapi.Option
     ExcludeTags: []string{"internal"},
 })
 if err != nil {
-    log.Fatal(err)
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
 }
 if err := builder.
     WithDescription("Pulumi provider for Example API").
     WithResources(infer.Resource[*Office](&Office{})). // optional hand-written resources
     Run(context.Background()); err != nil {
-    log.Fatal(err)
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
 }
 ```
 

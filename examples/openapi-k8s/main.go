@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net/http"
+	"os"
 
 	openapi "github.com/pierskarsenbarg/pulumi-openapi-provider"
 	"k8s.io/client-go/rest"
@@ -19,12 +20,14 @@ func main() {
 
 	restConfig, err := clientConfig.ClientConfig()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	transport, err := rest.TransportFor(restConfig)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	err = openapi.RunProvider(context.Background(), "openapi-k8s", "0.1.0", openapi.Options{
@@ -36,6 +39,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
