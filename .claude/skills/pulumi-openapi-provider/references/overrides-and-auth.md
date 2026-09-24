@@ -36,9 +36,11 @@ Contents:
 | `DisablePolling` | Turns off the post-create "wait until it exists" and post-delete "wait until it's gone" reads. |
 | `PollingOptions` | Timeout / initial interval / max interval / multiplier for that polling. |
 
-Override keys must match the **discovered** name exactly. If a key never matches, it is
-silently ignored — a common cause of "my override did nothing". Confirm names with the
-preflight harness first.
+Override keys must match the **discovered** name exactly. A key (other than `"*"`) that matches
+no path group makes discovery fail with `resource override "X" matches no discovered resource`.
+The key is checked against every path group, so overriding a group that exists but is not
+viable (e.g. no read or delete) does not error, but the override has no effect. Confirm names
+with the preflight harness first.
 
 ## 2. ResourceOverride: declarative fields
 

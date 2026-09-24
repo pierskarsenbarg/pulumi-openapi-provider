@@ -73,6 +73,9 @@ type DiscoveryResult struct {
 	Types          map[string]pschema.ComplexTypeSpec
 	DefaultBaseURL string
 	AuthSchemes    []AuthScheme
+	// Warnings lists non-fatal discovery findings, e.g. path groups that were skipped
+	// because they look like resources but cannot be managed.
+	Warnings []string
 }
 
 // BaseURL returns the base URL declared in the spec, or empty string if the spec
@@ -236,8 +239,12 @@ func discoverV2(
 	}
 
 	groups := groupPaths(swagger)
+	if err := checkOverrideKeys(overrides, groups); err != nil {
+		return DiscoveryResult{}, err
+	}
 	excludeSet := buildExcludeSet(excludeTags)
 	var resources []ResourceDef
+	var warnings []string
 	tokenOverridden := map[string]bool{}
 
 	wildcard := overrides["*"]
@@ -252,8 +259,11 @@ func discoverV2(
 			continue
 		}
 
-		res, ok := buildResourceV2(g, swagger, pkgName, rootTags, typeCollector)
+		res, warning, ok := buildResourceV2(g, swagger, pkgName, rootTags, typeCollector)
 		if !ok {
+			if warning != "" {
+				warnings = append(warnings, warning)
+			}
 			continue
 		}
 
@@ -280,6 +290,7 @@ func discoverV2(
 		Types:          typeCollector.types,
 		DefaultBaseURL: baseURL,
 		AuthSchemes:    extractAuthSchemesV2(swagger),
+		Warnings:       warnings,
 	}, nil
 }
 
@@ -527,9 +538,9 @@ func lowercaseFirst(s string) string {
 }
 
 // buildResourceV2 constructs a ResourceDef from a path group and Swagger spec.
-func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootTags map[string]bool, tc *typeCollector) (ResourceDef, bool) {
+func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootTags map[string]bool, tc *typeCollector) (ResourceDef, string, bool) {
 	if swagger.Paths == nil || swagger.Paths.PathItems == nil {
-		return ResourceDef{}, false
+		return ResourceDef{}, "", false
 	}
 
 	var collectionItem *v2high.PathItem
@@ -578,7 +589,7 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 
 	// Skip resources that can't be managed (need at least Create and one of Read/Delete)
 	if createOp == nil || (readOp == nil && deleteOp == nil) {
-		return ResourceDef{}, false
+		return ResourceDef{}, unmanageableWarning(g, createOp != nil), false
 	}
 
 	module := moduleFromOps(rootTags, v2OpTags(createOp), v2OpTags(readOp), v2OpTags(updateOp), v2OpTags(deleteOp))
@@ -695,7 +706,7 @@ func buildResourceV2(g pathGroup, swagger *v2high.Swagger, pkgName string, rootT
 		OutputSchema:     outputs,
 		RequiredInputs:   requiredInputs,
 		APIPropertyNames: apiPropertyNames,
-	}, true
+	}, "", true
 }
 
 // extractResponseSchema returns the schema from the first 2xx response of an operation.
@@ -962,6 +973,36 @@ func groupHasExcludedTagV3(excludeSet map[string]struct{}, g pathGroup, d *v3hig
 		}
 	}
 	return false
+}
+
+// checkOverrideKeys errors if a resource override key (other than the "*" wildcard) matches no
+// discovered path group. Groups are checked before Skip/ExcludeTags filtering.
+func checkOverrideKeys(overrides map[string]ResourceOverride, groups []pathGroup) error {
+	known := make(map[string]bool, len(groups))
+	for _, g := range groups {
+		known[g.name] = true
+	}
+	keys := make([]string, 0, len(overrides))
+	for k := range overrides {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if k != "*" && !known[k] {
+			return fmt.Errorf("resource override %q matches no discovered resource", k)
+		}
+	}
+	return nil
+}
+
+// unmanageableWarning describes a skipped group that looks like a resource (it has a create
+// operation) but has no read or delete. Groups without a create operation return "".
+func unmanageableWarning(g pathGroup, hasCreate bool) string {
+	if !hasCreate {
+		return ""
+	}
+	return fmt.Sprintf("skipping %q: %s has a create operation but %s has no read or delete",
+		g.name, g.collectionPath, g.itemPath)
 }
 
 // applyResourceOverrides applies the wildcard then the resource-specific override, validating any
@@ -1283,10 +1324,14 @@ func discoverV3(
 		}
 	}
 	groups := groupPathStrings(pathKeys)
+	if err := checkOverrideKeys(overrides, groups); err != nil {
+		return DiscoveryResult{}, err
+	}
 	excludeSet := buildExcludeSet(excludeTags)
 
 	wildcard := overrides["*"]
 	var resources []ResourceDef
+	var warnings []string
 	tokenOverridden := map[string]bool{}
 	for _, g := range groups {
 		or, hasOverride := overrides[g.name]
@@ -1298,8 +1343,11 @@ func discoverV3(
 			continue
 		}
 
-		res, ok := buildResourceV3(g, d, pkgName, rootTags, tc)
+		res, warning, ok := buildResourceV3(g, d, pkgName, rootTags, tc)
 		if !ok {
+			if warning != "" {
+				warnings = append(warnings, warning)
+			}
 			continue
 		}
 		overridden, err := applyResourceOverrides(&res, pkgName, g.name, wildcard, or, hasOverride)
@@ -1324,6 +1372,7 @@ func discoverV3(
 		Types:          tc.types,
 		DefaultBaseURL: baseURL,
 		AuthSchemes:    extractAuthSchemesV3(d),
+		Warnings:       warnings,
 	}, nil
 }
 
@@ -1389,9 +1438,9 @@ func extractBaseURLV3(d *v3high.Document) string {
 	return ""
 }
 
-func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags map[string]bool, tc *typeCollectorV3) (ResourceDef, bool) {
+func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags map[string]bool, tc *typeCollectorV3) (ResourceDef, string, bool) {
 	if d.Paths == nil || d.Paths.PathItems == nil {
-		return ResourceDef{}, false
+		return ResourceDef{}, "", false
 	}
 
 	var collectionItem *v3high.PathItem
@@ -1435,7 +1484,7 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 	}
 
 	if createOp == nil || (readOp == nil && deleteOp == nil) {
-		return ResourceDef{}, false
+		return ResourceDef{}, unmanageableWarning(g, createOp != nil), false
 	}
 
 	module := moduleFromOps(rootTags, v3OpTags(createOp), v3OpTags(readOp), v3OpTags(updateOp), v3OpTags(deleteOp))
@@ -1525,7 +1574,7 @@ func buildResourceV3(g pathGroup, d *v3high.Document, pkgName string, rootTags m
 		OutputSchema:     outputs,
 		RequiredInputs:   requiredInputs,
 		APIPropertyNames: apiPropertyNames,
-	}, true
+	}, "", true
 }
 
 // requestBodySchemaV3 extracts the schema from an operation's application/json request body.

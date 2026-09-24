@@ -156,12 +156,12 @@ func (pp *parameterizedProvider) getState() (*paramState, error) {
 	return s, nil
 }
 
-func (pp *parameterizedProvider) getSchema(_ context.Context, req p.GetSchemaRequest) (p.GetSchemaResponse, error) {
+func (pp *parameterizedProvider) getSchema(ctx context.Context, req p.GetSchemaRequest) (p.GetSchemaResponse, error) {
 	s, err := pp.getState()
 	if err != nil {
 		return p.GetSchemaResponse{}, err
 	}
-	resp, err := s.inner.GetSchema(context.Background(), req)
+	resp, err := s.inner.GetSchema(ctx, req)
 	if err != nil {
 		return resp, err
 	}

@@ -67,7 +67,7 @@ exact path and the path plus `/` are looked up, so trailing-slash specs match.
 | Update | `PUT` on the item path, else `PATCH` on the item path | PUT wins when both exist |
 | Delete | `DELETE` on the item path | |
 
-**Viability rule** — the group is discarded silently unless:
+**Viability rule** — the group is discarded unless the following holds. The drop is silent, except that a group with a create operation but no read or delete logs a warning once from `GetSchema`:
 
 ```
 createOp != nil  AND  (readOp != nil OR deleteOp != nil)
