@@ -131,7 +131,8 @@ package main
 
 import (
     "context"
-    "log"
+    "fmt"
+    "os"
 
     openapi "github.com/pierskarsenbarg/pulumi-openapi-provider"
 )
@@ -141,12 +142,15 @@ func main() {
         SpecURL: "https://api.example.com/openapi.json",
     })
     if err != nil {
-        log.Fatal(err)
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
     }
 }
 ```
 
 Build it as `pulumi-resource-myprovider` and it is a fully working Pulumi provider.
+
+Don't use `log.Fatal` in a provider's `main`: the Pulumi SDK discards the standard `log` package's output, so the process would exit 1 with no message. Write the error to `os.Stderr` and exit instead.
 
 ## Schema extraction and SDK generation
 
@@ -167,7 +171,8 @@ schema, err := openapi.GetSchema("myprovider", "0.1.0", openapi.Options{
     SpecURL: "https://api.example.com/openapi.json",
 })
 if err != nil {
-    log.Fatal(err)
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
 }
 os.WriteFile("schema.json", []byte(schema), 0o644)
 ```
@@ -181,7 +186,8 @@ builder, err := openapi.NewProviderBuilder("myprovider", "0.1.0", openapi.Option
     SpecURL: "https://api.example.com/openapi.json",
 })
 if err != nil {
-    log.Fatal(err)
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
 }
 
 provider, err := builder.
@@ -192,7 +198,8 @@ provider, err := builder.
     WithPluginDownloadURL("https://github.com/myorg/pulumi-myprovider/releases/download/${VERSION}").
     Build()
 if err != nil {
-    log.Fatal(err)
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
 }
 
 p.RunProvider(context.Background(), "myprovider", "0.1.0", provider)
