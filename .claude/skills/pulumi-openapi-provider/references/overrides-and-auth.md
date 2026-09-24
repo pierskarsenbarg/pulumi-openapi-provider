@@ -30,7 +30,7 @@ Contents:
 | `HTTPClient` | Custom `*http.Client` for both the spec fetch and API calls — the hook for mTLS, kubeconfig transports, signing round-trippers, proxies. |
 | `UserAgent` | Replaces the default `pulumi-openapi-provider/<version>` header. |
 | `Overrides` | `map[resourceName]ResourceOverride`. Keys are discovered names (`"Pet"`, `"StoreOrder"`, `"OrgsTeams"`), not tokens. |
-| `TypeOverrides` | `map[specSchemaName]TypeOverride`. Keys are spec definition / component-schema names (`"Pet"`), not PascalCased. `Token` (`<provider name>:module:Name`) replaces the generated type token for a named type or enum. Errors on a malformed token, an unknown key, or a collision with another type's token. Inline enums are not covered. |
+| `TypeOverrides` | `map[specSchemaName]TypeOverride`. Keys are spec definition / component-schema names (`"Pet"`), not PascalCased, or inline enum names: the last segment of the enum's default token in the generated schema (`hue:index:ClipV2ResourceSceneType` -> `"ClipV2ResourceSceneType"`). `Token` (`<provider name>:module:Name`) replaces the generated type token. Errors on a malformed token, an unknown key (including an inline enum on a skipped/excluded resource), or a collision with another type's token. |
 | `ExcludeTags` | Drops any resource whose create/read/update/delete operations carry one of these tags. The lever for trimming huge specs. |
 | `AuthOverride` | Changes the header name and/or token prefix for bearer-style credentials. |
 | `DisablePolling` | Turns off the post-create "wait until it exists" and post-delete "wait until it's gone" reads. |

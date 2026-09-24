@@ -113,7 +113,7 @@ harness reports if you only mean to change the type name.
 Expected: the module comes from the first operation tag that also appears in the spec's root
 `tags` list (`petstore:pet:Pet`). The README and CLAUDE.md say `index`; the code disagrees.
 Types and enums are always in `index` by default. Resources take `ResourceOverride{Token}`;
-named types and enums take `TypeOverrides{"SpecName": {Token: "pkg:module:Name"}}`.
+named types and enums (including inline enums, keyed by the last segment of their default token) take `TypeOverrides{"Name": {Token: "pkg:module:Name"}}`.
 
 ## Nested object properties are untyped
 
