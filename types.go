@@ -27,6 +27,11 @@ type Options struct {
 	// The special key "*" applies to every resource as a baseline; resource-specific
 	// entries take precedence over it on a field-by-field basis.
 	Overrides map[string]ResourceOverride
+	// TypeOverrides customizes how named spec types (definitions / component schemas) map to
+	// Pulumi types. Keys are the spec names (e.g. "Pet"), not the generated PascalCase names.
+	// Only named schemas and enums are covered; inline enums are not overridable.
+	// Only available in library (code) mode; ignored by the parameterized provider.
+	TypeOverrides map[string]TypeOverride
 	// ExcludeTags lists OpenAPI operation tags whose associated resources should be
 	// excluded from discovery. Any resource whose CRUD operations include at least
 	// one matching tag is skipped entirely.
@@ -71,6 +76,13 @@ type AuthOverride struct {
 	// TokenPrefix is the string prepended to the token value (e.g. "token" produces
 	// "token <value>"). Set to "" to send the raw token with no prefix.
 	TokenPrefix string
+}
+
+// TypeOverride customizes how a named spec type maps to a Pulumi type.
+type TypeOverride struct {
+	// Token replaces the generated type token. It must have the form "<provider name>:module:Name"
+	// (e.g. "mypkg:index:Widget") and must not collide with another type's token.
+	Token string
 }
 
 // ResourceOverride customizes how a discovered resource maps to Pulumi operations.

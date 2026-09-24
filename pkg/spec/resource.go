@@ -96,12 +96,15 @@ func BaseURL(doc libopenapi.Document) string {
 // Discover identifies Pulumi resources from an OpenAPI document using path conventions.
 // Supports both Swagger 2.0 and OpenAPI 3.x specs.
 // excludeTags lists operation tags whose resources should be excluded from discovery.
-func Discover(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride, excludeTags []string) (DiscoveryResult, error) {
+func Discover(
+	doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride,
+	typeOverrides map[string]TypeOverride, excludeTags []string,
+) (DiscoveryResult, error) {
 	info := doc.GetSpecInfo()
 	if info.SpecFormat == specFormatOAS2 {
-		return discoverV2(doc, pkgName, overrides, excludeTags)
+		return discoverV2(doc, pkgName, overrides, typeOverrides, excludeTags)
 	}
-	return discoverV3(doc, pkgName, overrides, excludeTags)
+	return discoverV3(doc, pkgName, overrides, typeOverrides, excludeTags)
 }
 
 // ResourceOverride is re-declared here to avoid circular imports; callers pass the openapi.ResourceOverride.
@@ -119,6 +122,64 @@ type ResourceOverride struct {
 	IDField      string
 }
 
+// TypeOverride customizes how a named spec type maps to a Pulumi type.
+// It is re-declared here to avoid circular imports, like ResourceOverride.
+type TypeOverride struct {
+	Token string
+}
+
+// tokenFor returns the Pulumi token for a named spec type, honouring any override.
+func tokenFor(pkgName string, overrides map[string]TypeOverride, name string) string {
+	if o, ok := overrides[name]; ok && o.Token != "" {
+		return o.Token
+	}
+	return fmt.Sprintf("%s:index:%s", pkgName, toPascalCase(name))
+}
+
+// validateTypeOverrides checks override tokens are well-formed "<pkgName>:module:Name",
+// that every key names a schema in the spec, and that no overridden token collides with
+// another schema's final token.
+func validateTypeOverrides(pkgName string, schemaNames []string, overrides map[string]TypeOverride) error {
+	if len(overrides) == 0 {
+		return nil
+	}
+	known := make(map[string]bool, len(schemaNames))
+	owners := make(map[string][]string, len(schemaNames))
+	for _, n := range schemaNames {
+		known[n] = true
+		tok := tokenFor(pkgName, overrides, n)
+		owners[tok] = append(owners[tok], n)
+	}
+
+	keys := make([]string, 0, len(overrides))
+	for k := range overrides {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		o := overrides[k]
+		if o.Token == "" {
+			continue
+		}
+		if !known[k] {
+			return fmt.Errorf("type override %q: no such definition or schema in the spec", k)
+		}
+		parts := strings.Split(o.Token, ":")
+		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+			return fmt.Errorf("type override %q: token %q must have the form %s:module:Name", k, o.Token, pkgName)
+		}
+		if parts[0] != pkgName {
+			return fmt.Errorf("type override %q: token %q must use the provider name %q as its package", k, o.Token, pkgName)
+		}
+		if names := owners[o.Token]; len(names) > 1 {
+			sort.Strings(names)
+			return fmt.Errorf("type override %q: token %q is also used by %s", k, o.Token, strings.Join(names, ", "))
+		}
+	}
+	return nil
+}
+
 type pathGroup struct {
 	name           string // resource name, e.g. "Pet"
 	collectionPath string // e.g. "/pet" or "/api/orgs/{orgName}/tokens"
@@ -126,19 +187,33 @@ type pathGroup struct {
 	idPathParam    string // the trailing param name, e.g. "petId" or "tokenId"
 }
 
-func discoverV2(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride, excludeTags []string) (DiscoveryResult, error) {
+func discoverV2(
+	doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride,
+	typeOverrides map[string]TypeOverride, excludeTags []string,
+) (DiscoveryResult, error) {
 	model, err := doc.BuildV2Model()
 	if err != nil && model == nil {
 		return DiscoveryResult{}, fmt.Errorf("building v2 model: %w", err)
 	}
 	swagger := &model.Model
 
+	var defNames []string
+	if swagger.Definitions != nil && swagger.Definitions.Definitions != nil {
+		for pair := swagger.Definitions.Definitions.Oldest(); pair != nil; pair = pair.Next() {
+			defNames = append(defNames, pair.Key)
+		}
+	}
+	if err := validateTypeOverrides(pkgName, defNames, typeOverrides); err != nil {
+		return DiscoveryResult{}, err
+	}
+
 	baseURL := extractBaseURLV2(swagger)
 	rootTags := rootTagSet(swagger.Tags)
 	typeCollector := &typeCollector{
-		pkgName: pkgName,
-		defs:    swagger.Definitions,
-		types:   map[string]pschema.ComplexTypeSpec{},
+		pkgName:   pkgName,
+		defs:      swagger.Definitions,
+		overrides: typeOverrides,
+		types:     map[string]pschema.ComplexTypeSpec{},
 	}
 
 	groups := groupPaths(swagger)
@@ -891,9 +966,14 @@ func applyOverride(res *ResourceDef, or ResourceOverride) {
 
 // typeCollector resolves and accumulates shared object types encountered during discovery.
 type typeCollector struct {
-	pkgName string
-	defs    *v2high.Definitions
-	types   map[string]pschema.ComplexTypeSpec
+	pkgName   string
+	defs      *v2high.Definitions
+	overrides map[string]TypeOverride
+	types     map[string]pschema.ComplexTypeSpec
+}
+
+func (tc *typeCollector) tokenFor(name string) string {
+	return tokenFor(tc.pkgName, tc.overrides, name)
 }
 
 // convertProperty converts a SchemaProxy to a Pulumi PropertySpec.
@@ -909,7 +989,7 @@ func (tc *typeCollector) convertProperty(proxy *highbase.SchemaProxy, defs *v2hi
 			tc.ensureType(defName, defs)
 			return pschema.PropertySpec{
 				TypeSpec: pschema.TypeSpec{
-					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(defName)),
+					Ref: "#/types/" + tc.tokenFor(defName),
 				},
 			}
 		}
@@ -998,7 +1078,7 @@ func (tc *typeCollector) arrayItemSpec(schema *highbase.Schema, defs *v2high.Def
 		if defName != "" {
 			tc.ensureType(defName, defs)
 			return pschema.TypeSpec{
-				Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(defName)),
+				Ref: "#/types/" + tc.tokenFor(defName),
 			}
 		}
 	}
@@ -1022,7 +1102,7 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 	if defs == nil {
 		return
 	}
-	token := fmt.Sprintf("%s:index:%s", tc.pkgName, toPascalCase(defName))
+	token := tc.tokenFor(defName)
 	if _, exists := tc.types[token]; exists {
 		return
 	}
@@ -1077,18 +1157,32 @@ func (tc *typeCollector) ensureType(defName string, defs *v2high.Definitions) {
 // OpenAPI 3.x support
 // ---------------------------------------------------------------------------
 
-func discoverV3(doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride, excludeTags []string) (DiscoveryResult, error) {
+func discoverV3(
+	doc libopenapi.Document, pkgName string, overrides map[string]ResourceOverride,
+	typeOverrides map[string]TypeOverride, excludeTags []string,
+) (DiscoveryResult, error) {
 	model, err := doc.BuildV3Model()
 	if err != nil && model == nil {
 		return DiscoveryResult{}, fmt.Errorf("building v3 model: %w", err)
 	}
 	d := &model.Model
 
+	var schemaNames []string
+	if d.Components != nil && d.Components.Schemas != nil {
+		for k := range d.Components.Schemas.FromOldest() {
+			schemaNames = append(schemaNames, k)
+		}
+	}
+	if err := validateTypeOverrides(pkgName, schemaNames, typeOverrides); err != nil {
+		return DiscoveryResult{}, err
+	}
+
 	baseURL := extractBaseURLV3(d)
 	rootTags := rootTagSet(d.Tags)
 	tc := &typeCollectorV3{
 		pkgName:    pkgName,
 		components: d.Components,
+		overrides:  typeOverrides,
 		types:      map[string]pschema.ComplexTypeSpec{},
 	}
 
@@ -1398,7 +1492,12 @@ func extractComponentSchemaName(ref string) string {
 type typeCollectorV3 struct {
 	pkgName    string
 	components *v3high.Components
+	overrides  map[string]TypeOverride
 	types      map[string]pschema.ComplexTypeSpec
+}
+
+func (tc *typeCollectorV3) tokenFor(name string) string {
+	return tokenFor(tc.pkgName, tc.overrides, name)
 }
 
 // convertProperty converts a SchemaProxy to a Pulumi PropertySpec.
@@ -1413,7 +1512,7 @@ func (tc *typeCollectorV3) convertProperty(proxy *highbase.SchemaProxy, typeHint
 			tc.ensureType(name)
 			return pschema.PropertySpec{
 				TypeSpec: pschema.TypeSpec{
-					Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(name)),
+					Ref: "#/types/" + tc.tokenFor(name),
 				},
 			}
 		}
@@ -1479,7 +1578,7 @@ func (tc *typeCollectorV3) arrayItemSpec(schema *highbase.Schema) pschema.TypeSp
 	if ref := itemProxy.GetReference(); ref != "" {
 		if name := extractComponentSchemaName(ref); name != "" {
 			tc.ensureType(name)
-			return pschema.TypeSpec{Ref: fmt.Sprintf("#/types/%s:index:%s", tc.pkgName, toPascalCase(name))}
+			return pschema.TypeSpec{Ref: "#/types/" + tc.tokenFor(name)}
 		}
 	}
 	if s := itemProxy.Schema(); s != nil && len(s.Type) > 0 {
@@ -1497,7 +1596,7 @@ func (tc *typeCollectorV3) ensureType(schemaName string) {
 	if tc.components == nil || tc.components.Schemas == nil {
 		return
 	}
-	token := fmt.Sprintf("%s:index:%s", tc.pkgName, toPascalCase(schemaName))
+	token := tc.tokenFor(schemaName)
 	if _, exists := tc.types[token]; exists {
 		return
 	}

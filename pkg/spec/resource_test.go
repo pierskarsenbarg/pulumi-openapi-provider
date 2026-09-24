@@ -15,7 +15,7 @@ func TestDiscover_Petstore(t *testing.T) {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
 
-	result, err := spec.Discover(doc, "petstore", nil, nil)
+	result, err := spec.Discover(doc, "petstore", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestDiscover_IdNotInSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	result, err := spec.Discover(doc, "test", nil, nil)
+	result, err := spec.Discover(doc, "test", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -218,7 +218,7 @@ func loadInline(t *testing.T, content string) spec.DiscoveryResult {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	result, err := spec.Discover(doc, "test", nil, nil)
+	result, err := spec.Discover(doc, "test", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -569,7 +569,7 @@ func TestDiscover_Override_Skip(t *testing.T) {
 	}
 	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
 		"Widget": {Skip: true},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -598,7 +598,7 @@ func TestDiscover_Override_Token(t *testing.T) {
 	}
 	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
 		"Widgets": {Token: "test:index:Gadget"},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -662,7 +662,7 @@ func TestDiscover_WildcardOverride_AppliesToAll(t *testing.T) {
 	}
 	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
 		"*": {IDField: "metadata.name"},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -695,7 +695,7 @@ func TestDiscover_WildcardOverride_SpecificWins(t *testing.T) {
 	result, err := spec.Discover(doc, "test", map[string]spec.ResourceOverride{
 		"*":       {IDField: "metadata.name"},
 		"Gadgets": {IDField: "metadata.uid"},
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -843,7 +843,7 @@ func loadInlineWithTags(t *testing.T, content string, excludeTags []string) spec
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	result, err := spec.Discover(doc, "test", nil, excludeTags)
+	result, err := spec.Discover(doc, "test", nil, nil, excludeTags)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -920,7 +920,7 @@ func TestBuildSchema_Petstore(t *testing.T) {
 		t.Skipf("skipping: cannot fetch petstore spec: %v", err)
 	}
 
-	result, err := spec.Discover(doc, "petstore", nil, nil)
+	result, err := spec.Discover(doc, "petstore", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}
@@ -1823,7 +1823,7 @@ func TestDiscover_NetBox(t *testing.T) {
 		t.Skipf("skipping: cannot fetch NetBox spec: %v", err)
 	}
 
-	result, err := spec.Discover(doc, "netbox", nil, nil)
+	result, err := spec.Discover(doc, "netbox", nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Discover: %v", err)
 	}

@@ -125,7 +125,7 @@ func (pp *parameterizedProvider) parameterize(_ context.Context, req p.Parameter
 		return p.ParameterizeResponse{}, fmt.Errorf("invalid spec version %q: %w", specVer, err)
 	}
 
-	result, err := spec.Discover(doc, pkgName, nil, nil)
+	result, err := spec.Discover(doc, pkgName, nil, nil, nil)
 	if err != nil {
 		return p.ParameterizeResponse{}, fmt.Errorf("discovering resources: %w", err)
 	}

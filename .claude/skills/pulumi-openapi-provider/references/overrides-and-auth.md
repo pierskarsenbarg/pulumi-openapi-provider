@@ -1,8 +1,8 @@
 # Overrides, hooks and auth
 
 Everything here is **library mode only**. The parameterized binary calls
-`spec.Discover(doc, pkgName, nil, nil)` and builds its config with no overrides, so
-`Overrides`, `ExcludeTags`, `AuthOverride`, `BaseURL`, `HTTPClient` and polling options
+`spec.Discover(doc, pkgName, nil, nil, nil)` and builds its config with no overrides, so
+`Overrides`, `TypeOverrides`, `ExcludeTags`, `AuthOverride`, `BaseURL`, `HTTPClient` and polling options
 have no effect there. The moment preflight says one of these is needed, the answer is a
 Go `main.go`.
 
@@ -30,6 +30,7 @@ Contents:
 | `HTTPClient` | Custom `*http.Client` for both the spec fetch and API calls — the hook for mTLS, kubeconfig transports, signing round-trippers, proxies. |
 | `UserAgent` | Replaces the default `pulumi-openapi-provider/<version>` header. |
 | `Overrides` | `map[resourceName]ResourceOverride`. Keys are discovered names (`"Pet"`, `"StoreOrder"`, `"OrgsTeams"`), not tokens. |
+| `TypeOverrides` | `map[specSchemaName]TypeOverride`. Keys are spec definition / component-schema names (`"Pet"`), not PascalCased. `Token` (`<provider name>:module:Name`) replaces the generated type token for a named type or enum. Errors on a malformed token, an unknown key, or a collision with another type's token. Inline enums are not covered. |
 | `ExcludeTags` | Drops any resource whose create/read/update/delete operations carry one of these tags. The lever for trimming huge specs. |
 | `AuthOverride` | Changes the header name and/or token prefix for bearer-style credentials. |
 | `DisablePolling` | Turns off the post-create "wait until it exists" and post-delete "wait until it's gone" reads. |
