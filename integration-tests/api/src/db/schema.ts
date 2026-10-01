@@ -5,9 +5,7 @@ export const organisations = sqliteTable("organisations", {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date()
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 export const teams = sqliteTable("teams", {
@@ -18,9 +16,7 @@ export const teams = sqliteTable("teams", {
   organisationId: text("organisation_id")
     .notNull()
     .references(() => organisations.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date()
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 export const users = sqliteTable("users", {
@@ -29,9 +25,7 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date()
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 export const teamMembers = sqliteTable(
@@ -46,11 +40,9 @@ export const teamMembers = sqliteTable(
     teamId: text("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
-    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date()
-    ),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   },
-  (t) => [uniqueIndex("team_members_user_team_unique").on(t.userId, t.teamId)]
+  (t) => [uniqueIndex("team_members_user_team_unique").on(t.userId, t.teamId)],
 );
 
 export const invites = sqliteTable("invites", {
@@ -61,9 +53,7 @@ export const invites = sqliteTable("invites", {
   organisationId: text("organisation_id")
     .notNull()
     .references(() => organisations.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date()
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 export const offices = sqliteTable("offices", {
@@ -72,9 +62,7 @@ export const offices = sqliteTable("offices", {
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   location: text("location"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date()
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 export type Organisation = typeof organisations.$inferSelect;

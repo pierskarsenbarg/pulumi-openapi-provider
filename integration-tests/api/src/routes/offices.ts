@@ -18,10 +18,7 @@ officesRouter.post("/", validator("json", officeBody), async (c) => {
     .insert(offices)
     .values({ name: body.name, location: body.location ?? null })
     .returning();
-  return c.json(
-    { ...office, createdAt: office.createdAt?.toISOString() ?? null },
-    201,
-  );
+  return c.json({ ...office, createdAt: office.createdAt?.toISOString() ?? null }, 201);
 });
 
 officesRouter.get("/:officeId", async (c) => {
@@ -38,10 +35,7 @@ officesRouter.get("/:officeId", async (c) => {
 
 officesRouter.delete("/:officeId", async (c) => {
   const { officeId } = c.req.param();
-  const result = await db
-    .delete(offices)
-    .where(eq(offices.id, officeId))
-    .returning();
+  const result = await db.delete(offices).where(eq(offices.id, officeId)).returning();
   if (result.length === 0) return c.json({ error: "Office not found" }, 404);
   return new Response(null, { status: 204 });
 });

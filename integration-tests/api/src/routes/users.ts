@@ -40,10 +40,7 @@ usersRouter.post(
       .insert(users)
       .values({ name: body.name, email: body.email })
       .returning();
-    return c.json(
-      { ...user, createdAt: user.createdAt?.toISOString() ?? null },
-      201,
-    );
+    return c.json({ ...user, createdAt: user.createdAt?.toISOString() ?? null }, 201);
   },
 );
 
@@ -124,10 +121,7 @@ usersRouter.delete(
   }),
   async (c) => {
     const { userId } = c.req.param();
-    const result = await db
-      .delete(users)
-      .where(eq(users.id, userId))
-      .returning();
+    const result = await db.delete(users).where(eq(users.id, userId)).returning();
     if (result.length === 0) return c.json({ error: "User not found" }, 404);
     return new Response(null, { status: 204 });
   },

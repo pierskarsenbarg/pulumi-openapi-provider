@@ -46,14 +46,8 @@ teamsRouter.post(
     });
     if (!org) return c.json({ error: "Organisation not found" }, 404);
 
-    const [team] = await db
-      .insert(teams)
-      .values({ name: body.name, organisationId })
-      .returning();
-    return c.json(
-      { ...team, createdAt: team.createdAt?.toISOString() ?? null },
-      201,
-    );
+    const [team] = await db.insert(teams).values({ name: body.name, organisationId }).returning();
+    return c.json({ ...team, createdAt: team.createdAt?.toISOString() ?? null }, 201);
   },
 );
 
@@ -76,10 +70,7 @@ teamsRouter.get(
   async (c) => {
     const { organisationId, teamId } = c.req.param();
     const team = await db.query.teams.findFirst({
-      where: and(
-        eq(teams.id, teamId),
-        eq(teams.organisationId, organisationId),
-      ),
+      where: and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
     });
     if (!team) return c.json({ error: "Team not found" }, 404);
     return c.json({
@@ -112,9 +103,7 @@ teamsRouter.patch(
     const [team] = await db
       .update(teams)
       .set({ name: body.name })
-      .where(
-        and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
-      )
+      .where(and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)))
       .returning();
     if (!team) return c.json({ error: "Team not found" }, 404);
     return c.json({
@@ -141,9 +130,7 @@ teamsRouter.delete(
     const { organisationId, teamId } = c.req.param();
     const result = await db
       .delete(teams)
-      .where(
-        and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
-      )
+      .where(and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)))
       .returning();
     if (result.length === 0) return c.json({ error: "Team not found" }, 404);
     return new Response(null, { status: 204 });

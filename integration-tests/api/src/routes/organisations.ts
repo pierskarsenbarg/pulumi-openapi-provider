@@ -36,14 +36,8 @@ organisationsRouter.post(
   validator("json", organisationBody),
   async (c) => {
     const body = c.req.valid("json");
-    const [org] = await db
-      .insert(organisations)
-      .values({ name: body.name })
-      .returning();
-    return c.json(
-      { ...org, createdAt: org.createdAt?.toISOString() ?? null },
-      201,
-    );
+    const [org] = await db.insert(organisations).values({ name: body.name }).returning();
+    return c.json({ ...org, createdAt: org.createdAt?.toISOString() ?? null }, 201);
   },
 );
 
@@ -126,8 +120,7 @@ organisationsRouter.delete(
       .delete(organisations)
       .where(eq(organisations.id, organisationId))
       .returning();
-    if (result.length === 0)
-      return c.json({ error: "Organisation not found" }, 404);
+    if (result.length === 0) return c.json({ error: "Organisation not found" }, 404);
     return new Response(null, { status: 204 });
   },
 );
