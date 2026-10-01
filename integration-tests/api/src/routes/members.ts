@@ -42,10 +42,7 @@ membersRouter.post(
     const body = c.req.valid("json");
 
     const team = await db.query.teams.findFirst({
-      where: and(
-        eq(teams.id, teamId),
-        eq(teams.organisationId, organisationId),
-      ),
+      where: and(eq(teams.id, teamId), eq(teams.organisationId, organisationId)),
     });
     if (!team) return c.json({ error: "Team not found" }, 404);
 
@@ -53,10 +50,7 @@ membersRouter.post(
       .insert(teamMembers)
       .values({ userId: body.userId, teamId })
       .returning();
-    return c.json(
-      { ...member, createdAt: member.createdAt?.toISOString() ?? null },
-      201,
-    );
+    return c.json({ ...member, createdAt: member.createdAt?.toISOString() ?? null }, 201);
   },
 );
 
@@ -108,8 +102,7 @@ membersRouter.delete(
       .delete(teamMembers)
       .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)))
       .returning();
-    if (result.length === 0)
-      return c.json({ error: "Membership not found" }, 404);
+    if (result.length === 0) return c.json({ error: "Membership not found" }, 404);
     return new Response(null, { status: 204 });
   },
 );

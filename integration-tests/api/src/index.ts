@@ -6,6 +6,7 @@ import { usersRouter } from "./routes/users";
 import { membersRouter } from "./routes/members";
 import { officesRouter } from "./routes/offices";
 import { invitesRouter } from "./routes/invites";
+import { swaggerUI } from "@hono/swagger-ui";
 
 const app = new Hono();
 
@@ -44,6 +45,13 @@ app.get(
         },
       },
     },
+  }),
+);
+
+app.get(
+  "/docs",
+  swaggerUI({
+    url: "/openapi",
   }),
 );
 

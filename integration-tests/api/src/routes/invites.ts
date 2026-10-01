@@ -54,10 +54,7 @@ invitesRouter.post(
       .insert(invites)
       .values({ email: body.email, organisationId })
       .returning();
-    return c.json(
-      { ...invite, createdAt: invite.createdAt?.toISOString() ?? null },
-      201,
-    );
+    return c.json({ ...invite, createdAt: invite.createdAt?.toISOString() ?? null }, 201);
   },
 );
 
@@ -111,10 +108,7 @@ invitesRouter.delete(
   }),
   async (c) => {
     const { inviteId } = c.req.param();
-    const result = await db
-      .delete(invites)
-      .where(eq(invites.id, inviteId))
-      .returning();
+    const result = await db.delete(invites).where(eq(invites.id, inviteId)).returning();
     if (result.length === 0) return c.json({ error: "Invite not found" }, 404);
     return new Response(null, { status: 204 });
   },
