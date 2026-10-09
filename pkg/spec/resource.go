@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	v2high "github.com/pb33f/libopenapi/datamodel/high/v2"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"go.yaml.in/yaml/v4"
 )
 
 const (
