@@ -4,10 +4,9 @@ updates:
     directories:
       - "/"
       - "/examples/*"
-      - "/integration-tests/provider"
+      - "/integration-tests/code-provider/provider"
     schedule:
-      interval: "weekly"
-      day: "thursday"
+      interval: "monthly"
       time: "05:00"
     assignees:
       - "pierskarsenbarg"
@@ -17,21 +16,27 @@ updates:
 
   - package-ecosystem: "npm"
     directories:
-      - "/integration-tests/api"
-      - "/integration-tests/pulumi"
-      - "/examples/*"
+      - "/integration-tests/*/pulumi"
+      - "/examples/*/program"
     schedule:
-      interval: "weekly"
-      day: "thursday"
+      interval: "monthly"
+      time: "05:00"
+    assignees:
+      - "pierskarsenbarg"
+
+  - package-ecosystem: "bun"
+    directories:
+      - "/integration-tests/api"
+    schedule:
+      interval: "monthly"
       time: "05:00"
     assignees:
       - "pierskarsenbarg"
 
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directory: "/.github/workflows"
     schedule:
-      interval: "weekly"
-      day: "thursday"
+      interval: "monthly"
       time: "05:00"
     assignees:
       - "pierskarsenbarg"
