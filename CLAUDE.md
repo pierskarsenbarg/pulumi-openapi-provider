@@ -169,7 +169,7 @@ openapi.Options{
 - Ordered maps are iterated with `.Oldest()` / `.Next()` (v2) or range over `.FromOldest()` (v3)
 - `SchemaProxy.GetReference()` returns the `$ref` string before resolution; call `.Schema()` to get the resolved schema
 - V2 definitions live under `#/definitions/`; V3 schemas live under `#/components/schemas/`
-- `schema.Enum` is `[]*yaml.Node` (from `go.yaml.in/yaml/v4`); use `n.Tag` to distinguish `!!int` / `!!float` / `!!bool` / `!!str` and `n.Value` for the string representation
+- `schema.Enum` is `[]*yaml.Node` (from `github.com/pb33f/go-yaml`, not `go.yaml.in/yaml/v4` — libopenapi 0.41+ uses pb33f's fork, and the two `Node` types are not interchangeable); use `n.Tag` to distinguish `!!int` / `!!float` / `!!bool` / `!!str` and `n.Value` for the string representation
 
 ## Integration tests
 

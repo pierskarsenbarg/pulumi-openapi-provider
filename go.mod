@@ -4,11 +4,11 @@ go 1.26.4
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/pb33f/go-yaml v0.1.1
 	github.com/pb33f/libopenapi v0.41.2
 	github.com/pulumi/pulumi-go-provider v1.6.0
 	github.com/pulumi/pulumi/pkg/v3 v3.259.0
 	github.com/pulumi/pulumi/sdk/v3 v3.259.0
-	go.yaml.in/yaml/v4 v4.0.0-rc.6
 )
 
 require (
@@ -73,7 +73,6 @@ require (
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/jsonpath v0.8.4 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pgavlin/fx v0.1.6 // indirect
