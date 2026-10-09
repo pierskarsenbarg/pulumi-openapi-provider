@@ -22,7 +22,7 @@
     "valibot": "^1.1.0"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.1",
+    "drizzle-kit": "^0.31.11",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0"
   }
