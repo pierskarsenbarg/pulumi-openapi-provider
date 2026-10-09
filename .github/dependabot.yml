@@ -23,6 +23,9 @@ updates:
       time: "05:00"
     assignees:
       - "pierskarsenbarg"
+    ignore:
+      - dependency-name: "typescript"
+        versions: ["7.x"]
 
   - package-ecosystem: "bun"
     directories:
