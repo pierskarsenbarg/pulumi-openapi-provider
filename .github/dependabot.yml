@@ -19,6 +19,7 @@ updates:
     directories:
       - "/integration-tests/api"
       - "/integration-tests/pulumi"
+      - "/examples/*"
     schedule:
       interval: "weekly"
       day: "thursday"
