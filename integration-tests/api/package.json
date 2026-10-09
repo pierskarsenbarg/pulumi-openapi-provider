@@ -24,6 +24,6 @@
   "devDependencies": {
     "drizzle-kit": "^0.31.1",
     "oxfmt": "^0.72.0",
-    "oxlint": "^1.86.0"
+    "oxlint": "^1.87.0"
   }
 }
