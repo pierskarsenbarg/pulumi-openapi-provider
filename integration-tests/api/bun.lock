@@ -7,7 +7,7 @@
       "dependencies": {
         "@hono/standard-validator": "^0.4.0",
         "@hono/swagger-ui": "^0.6.1",
-        "@hono/valibot-validator": "^0.6.1",
+        "@hono/valibot-validator": "^0.6.2",
         "@valibot/to-json-schema": "^1.8.0",
         "drizzle-orm": "^0.45.3",
         "hono": "^4.13.13",
@@ -84,7 +84,7 @@
 
     "@hono/swagger-ui": ["@hono/swagger-ui@0.6.1", "", { "peerDependencies": { "hono": ">=4.0.0" } }, "sha512-sJTvldu1GPeEPfyeLG7gRj+W4vEuD+JDi+JjJ3TJs/DvMUtBLs0KJO5yokGegWWdy5qrbdnQGekbhgNRmPmYKQ=="],
 
-    "@hono/valibot-validator": ["@hono/valibot-validator@0.6.1", "", { "peerDependencies": { "hono": ">=3.9.0", "valibot": "^1.0.0 || ^1.0.0-beta.4 || ^1.0.0-rc" } }, "sha512-rqKhQJI8IVR8gRRNHHf2wGtIT7sKEqV1KoGL5f2SocNytl+tBNn4EtRu4zfk/D6axgWSswnaxeiuJhM5yNFrCg=="],
+    "@hono/valibot-validator": ["@hono/valibot-validator@0.6.2", "", { "peerDependencies": { "hono": ">=3.9.0", "valibot": "^1.0.0 || ^1.0.0-beta.4 || ^1.0.0-rc" } }, "sha512-glBQW4okjgX4iabeaQXqwa79aGuZovxHMZTuWyCnoWyWH6v0z06OKnwvnHygZaIEeOgtXB29aCzIqQTUhU5yvg=="],
 
     "@oxfmt/binding-android-arm-eabi": ["@oxfmt/binding-android-arm-eabi@0.72.0", "", { "os": "android", "cpu": "arm" }, "sha512-u4U1uaDOVBuorGNC/07NLm48nECHOiJJka002YGML16Md2DRvf38RGBt01lH60EOGvNlFVmbLoksQedNBoZHKw=="],
 
