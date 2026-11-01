@@ -5,7 +5,7 @@ go 1.26.6
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pb33f/go-yaml v0.1.1
-	github.com/pb33f/libopenapi v0.41.2
+	github.com/pb33f/libopenapi v0.41.8
 	github.com/pulumi/pulumi-go-provider v1.7.0
 	github.com/pulumi/pulumi/pkg/v3 v3.265.0
 	github.com/pulumi/pulumi/sdk/v3 v3.265.0
@@ -120,7 +120,7 @@ require (
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
